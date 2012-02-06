@@ -8,18 +8,15 @@ FIND_PACKAGE( Boost 1.37 COMPONENTS date_time program_options filesystem thread 
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})
 
-
 INCLUDE_DIRECTORIES(${CMAKE_CURRENT_SOURCE_DIR}/..)
-find_package(GTest REQUIRED)
 #CMAKE_FORCE_CXX_COMPILER(g++ GNU)
 
 set(PROJECT_TEST_NAME mdbq_test)
-include_directories(${GTEST_INCLUDE_DIRS})
 include_directories(${CMAKE_BINARY_DIR}/src)
 
 file(GLOB TEST_SRC_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
 add_executable(mdbq_test ${TEST_SRC_FILES})
-target_link_libraries(mdbq_test  ${GTEST_BOTH_LIBRARIES} ${Boost_LIBRARIES} pthread mdbq)
+target_link_libraries(mdbq_test  ${Boost_LIBRARIES} pthread mdbq)
 
 add_test(gtest ${PROJECT_TEST_NAME})
 
