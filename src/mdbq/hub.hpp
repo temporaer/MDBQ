@@ -45,30 +45,27 @@ namespace mdbq
             /**
              * get number of pending jobs
              */
-            size_t get_n_pending();
+            size_t get_n_open();
 
             /**
              * get number of jobs being worked on
              */
-            size_t get_n_started();
+            size_t get_n_assigned();
+
+            /**
+             * get number of jobs finished
+             */
+            size_t get_n_ok();
+
+            /**
+             * get number of jobs failed
+             */
+            size_t get_n_failed();
 
             /**
              * clear the whole job queue
              */
             void clear_all();
-
-            /**
-             * determine whether new results are available.
-             *
-             * If there are results, they are moved to the
-             * prefix+_finished collection.
-             */
-            size_t move_results_to_finished();
-
-            /**
-             * get number of finished items
-             */
-            size_t get_n_finished();
 
             /**
              * register with the main loop

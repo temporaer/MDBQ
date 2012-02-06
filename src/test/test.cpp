@@ -28,39 +28,38 @@ struct Fix{
 
 BOOST_FIXTURE_TEST_SUITE(MdbQ, Fix)
 BOOST_AUTO_TEST_CASE(create_and_destroy){
-    BOOST_CHECK_EQUAL(hub.get_n_pending(), 0);
+    BOOST_CHECK_EQUAL(hub.get_n_open(), 0);
     hub.insert_job(BSON("foo"<<1<<"bar"<<2), 1000);
-    BOOST_CHECK_EQUAL(hub.get_n_pending(), 1);
+    BOOST_CHECK_EQUAL(hub.get_n_open(), 1);
 }
 
 BOOST_AUTO_TEST_CASE(client_get_task){
-    BOOST_CHECK_EQUAL(0, hub.get_n_pending());
+    BOOST_CHECK_EQUAL(0, hub.get_n_open());
     hub.insert_job(BSON("foo"<<1<<"bar"<<2), 1000);
     boost::this_thread::sleep(boost::posix_time::seconds(1));
-    BOOST_CHECK_EQUAL(1, hub.get_n_pending());
-    BOOST_CHECK_EQUAL(0, hub.get_n_started());
+    BOOST_CHECK_EQUAL(1, hub.get_n_open());
+    BOOST_CHECK_EQUAL(0, hub.get_n_assigned());
 
     mongo::BSONObj task;
     BOOST_CHECK(clt.get_next_task(task));
     boost::this_thread::sleep(boost::posix_time::seconds(1));
-    BOOST_CHECK_EQUAL(1, hub.get_n_started());
-    BOOST_CHECK_EQUAL(1, hub.get_n_pending());
+    BOOST_CHECK(!task.isEmpty());
+    BOOST_CHECK_EQUAL(1, hub.get_n_assigned());
+    BOOST_CHECK_EQUAL(0, hub.get_n_open());
     BOOST_CHECK_EQUAL(1, task["foo"].Int());
     BOOST_CHECK_EQUAL(2, task["bar"].Int());
 
     clt.finish(BSON("baz"<<3));
     boost::this_thread::sleep(boost::posix_time::seconds(1));
-    hub.move_results_to_finished();
-    boost::this_thread::sleep(boost::posix_time::seconds(1));
-    BOOST_CHECK_EQUAL(0, hub.get_n_pending());
-    BOOST_CHECK_EQUAL(1, hub.get_n_finished());
+    BOOST_CHECK_EQUAL(0, hub.get_n_open());
+    BOOST_CHECK_EQUAL(1, hub.get_n_ok());
 }
 
 BOOST_AUTO_TEST_CASE(client_loop){
-    BOOST_CHECK_EQUAL(hub.get_n_pending(), 0);
+    BOOST_CHECK_EQUAL(hub.get_n_open(), 0);
     hub.insert_job(BSON("foo"<<1<<"bar"<<2), 1000);
-    BOOST_CHECK_EQUAL(hub.get_n_pending(), 1);
-    BOOST_CHECK_EQUAL(hub.get_n_started(), 0);
+    BOOST_CHECK_EQUAL(hub.get_n_open(), 1);
+    BOOST_CHECK_EQUAL(hub.get_n_assigned(), 0);
 
     boost::asio::io_service io;
     clt.reg(io, 1);

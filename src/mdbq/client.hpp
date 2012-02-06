@@ -24,7 +24,7 @@ namespace mdbq
         public:
             Client(const std::string& url, const std::string& prefix);
             bool get_next_task(mongo::BSONObj& o);
-            void finish(const mongo::BSONObj& result);
+            void finish(const mongo::BSONObj& result, bool ok=1);
 
             /**
              * register with the main loop

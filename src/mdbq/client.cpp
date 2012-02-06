@@ -2,6 +2,7 @@
 #include <boost/bind.hpp>
 #include <mongo/client/dbclient.h>
 #include "client.hpp"
+#include "common.hpp"
 
 namespace mdbq
 {
@@ -42,7 +43,8 @@ namespace mdbq
                         BSON("finished" <<mongo::LT<< 0) <<
                         BSON("started" << mongo::LT<< 0)))<<
                 "update"<<BSON("$set"<<
-                    BSON("started"<<stime)));
+                    BSON("started"<<stime
+                        <<"state"<<TS_ASSIGNED)));
         std::cout << "cmd: "<< cmd<<std::endl;
         //m_ptr->m_con.runCommand(m_prefix+"_jobs",cmd, res);
         m_ptr->m_con.runCommand("test",cmd, res);
@@ -50,11 +52,11 @@ namespace mdbq
         if(res["value"].isNull())
             return false;
 
-        ct = res["value"].Obj();
+        ct = res["value"].Obj().copy();
         o = ct["payload"].Obj();
         return true;
     }
-    void Client::finish(const mongo::BSONObj& result){
+    void Client::finish(const mongo::BSONObj& result, bool ok){
         mongo::BSONObj& ct = m_ptr->m_current_task;
         if(ct.isEmpty()){
             throw std::runtime_error("get a task first before you finish!");
@@ -64,6 +66,7 @@ namespace mdbq
         m_ptr->m_con.update(m_prefix+"_jobs",
                 QUERY("_id"<<ct["_id"]),
                 BSON("$set"<<BSON(
+                    "state"<<(ok?TS_OK:TS_FAILED)<<
                     "finished"<<ftime<<
                     "result"<<result)));
         ct = mongo::BSONObj(); // empty, call get_next_task.

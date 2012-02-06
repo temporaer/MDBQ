@@ -1,6 +1,7 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <mongo/client/dbclient.h>
+#include "common.hpp"
 #include "hub.hpp"
 
 namespace mdbq
@@ -12,9 +13,9 @@ namespace mdbq
         std::auto_ptr<boost::asio::deadline_timer> m_timer;
         void update_check(Hub* c, const boost::system::error_code& error){
             mongo::BSONObj task;
-            size_t cnt = c->move_results_to_finished();
-            if(cnt)
-                c->got_new_results();
+            //size_t cnt = c->move_results_to_finished();
+            //if(cnt)
+            //    c->got_new_results();
             if(!error){
                 m_timer->expires_at(m_timer->expires_at() + boost::posix_time::seconds(m_interval));
                 m_timer->async_wait(boost::bind(&HubImpl::update_check,this,c,boost::asio::placeholders::error));
@@ -40,40 +41,47 @@ namespace mdbq
                     <<"finished" << -1
                     <<"started"  << -1
                     <<"payload"  <<job
+                    <<"state"    <<TS_OPEN
                     )
                 );
     }
-    size_t Hub::get_n_pending(){
+    size_t Hub::get_n_open(){
         return m_ptr->m_con.count(m_prefix+"_jobs", 
-                BSON( "finished" << mongo::LT << 0));
+                BSON( "state" << TS_OPEN));
     }
-    size_t Hub::get_n_started(){
+    size_t Hub::get_n_assigned(){
         return m_ptr->m_con.count(m_prefix+"_jobs", 
-                BSON( "started" << mongo::GT << 0));
+                BSON( "state" << TS_ASSIGNED));
     }
-    size_t Hub::get_n_finished(){
-        return m_ptr->m_con.count(m_prefix+"_finished", 
-                BSON( "finished" << mongo::GT << 0));
+    size_t Hub::get_n_ok(){
+        return m_ptr->m_con.count(m_prefix+"_jobs", 
+                BSON( "state" << TS_OK));
+    }
+    size_t Hub::get_n_failed(){
+        return m_ptr->m_con.count(m_prefix+"_jobs", 
+                BSON( "state" << TS_FAILED));
     }
     void Hub::clear_all(){
         m_ptr->m_con.dropCollection(m_prefix+"_jobs");
         m_ptr->m_con.dropCollection(m_prefix+"_finished");
     }
-    size_t Hub::move_results_to_finished(){
-        std::auto_ptr<mongo::DBClientCursor> p =
-            m_ptr->m_con.query( m_prefix+"_jobs",
-                    QUERY("finished" << mongo::GT <<  0));
-        unsigned int cnt=0;
-        while(p->more()){
-            mongo::BSONObj f = p->next();
-            m_ptr->m_con.remove( m_prefix+"_jobs",
-                    QUERY( "_id"<<f["_id"].OID() ));
-            m_ptr->m_con.insert( m_prefix+"_finished",
-                    f);
-            cnt++;
-        }
-        return cnt;
-    }
+    /*
+     *size_t Hub::move_results_to_finished(){
+     *    std::auto_ptr<mongo::DBClientCursor> p =
+     *        m_ptr->m_con.query( m_prefix+"_jobs",
+     *                QUERY("finished" << mongo::GT <<  0));
+     *    unsigned int cnt=0;
+     *    while(p->more()){
+     *        mongo::BSONObj f = p->next();
+     *        m_ptr->m_con.remove( m_prefix+"_jobs",
+     *                QUERY( "_id"<<f["_id"].OID() ));
+     *        m_ptr->m_con.insert( m_prefix+"_finished",
+     *                f);
+     *        cnt++;
+     *    }
+     *    return cnt;
+     *}
+     */
     void Hub::got_new_results(){
         std::cout <<"New results available!"<<std::endl;
     }
