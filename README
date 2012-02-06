@@ -1,3 +1,25 @@
 MongoDB Queue
 
 C++ Job Queue via MongoDB as a central instance
+
+Control flow is either by you or using boost.asio.
+
+Own control flow:
+
+    // in your server program instance:
+    Hub hub("localhost", "test.col");
+    hub.insert_job(BSON("foo"<<1<<"bar<<2), 1000);
+
+    // in your workers
+    Client clt("localhost", "test.col");
+    mongo::BSONObj task;
+    clt.get_next_task(task);
+    clt.finish(BSON("baz"<<3));
+
+Boost.Asio control flow:
+
+    // similar to above, but you will have to overload handlers, then do
+    boost::asio::io_service io;
+    clt.reg(io, 1); // query interval in s
+    hub.reg(io, 1); // query interval in s
+    io.run();
