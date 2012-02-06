@@ -1,6 +1,6 @@
 MongoDB Queue
 
-C++ Job Queue via MongoDB as a central instance
+Lightweight C++ Job Queue using MongoDB for queues
 
 Control flow is either by you or using boost.asio.
 
@@ -14,12 +14,16 @@ Own control flow:
     Client clt("localhost", "test.col");
     mongo::BSONObj task;
     clt.get_next_task(task);
+    clt.log(BSON("level"<<0<<"progress"<<"10%"));
+    clt.log(BSON("level"<<0<<"progress"<<"50%"));
+    clt.checkpoint(); // flush log to server, mark that we're still working
+    clt.log(BSON("level"<<0<<"progress"<<"80%"));
     clt.finish(BSON("baz"<<3));
 
 Boost.Asio control flow:
 
     // similar to above, but you will have to overload handlers, then do
     boost::asio::io_service io;
-    clt.reg(io, 1); // query interval in s
-    hub.reg(io, 1); // query interval in s
+    clt.reg(io, 1); // on client
+    hub.reg(io, 1); // on hub
     io.run();

@@ -33,6 +33,10 @@ namespace mdbq
              */
             void reg(boost::asio::io_service& io_service, unsigned int interval);
 
+            void log(const mongo::BSONObj& msg);
+
+            void checkpoint();
+
             virtual void handle_task(const mongo::BSONObj& task);
             
             virtual ~Client();

@@ -43,6 +43,12 @@ namespace mdbq
             void insert_job(const mongo::BSONObj& job, unsigned int timeout);
 
             /**
+             * get newest finished job (primarily for testing)
+             */
+            mongo::BSONObj get_newest_finished();
+
+
+            /**
              * get number of pending jobs
              */
             size_t get_n_open();

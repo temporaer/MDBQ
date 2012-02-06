@@ -35,11 +35,11 @@ namespace mdbq
         long long int ctime = time(NULL);
         long long int to    = timeout;
         m_ptr->m_con.insert(m_prefix+"_jobs", 
-                BSON( mongo::GENOID <<
-                    "date"       <<ctime
-                    <<"timeout"  <<to
-                    <<"finished" << -1
-                    <<"started"  << -1
+                BSON( mongo::GENOID
+                    <<"timeout"  << to
+                    <<"ctime"  << ctime
+                    <<"ftime"  << -1
+                    <<"stime"  << -1
                     <<"payload"  <<job
                     <<"state"    <<TS_OPEN
                     )
@@ -90,6 +90,11 @@ namespace mdbq
         m_ptr->m_interval = interval;
         m_ptr->m_timer.reset(new boost::asio::deadline_timer(io_service, boost::posix_time::seconds(interval)));
         m_ptr->m_timer->async_wait(boost::bind(&HubImpl::update_check, m_ptr.get(), this, boost::asio::placeholders::error));
+    }
+
+    mongo::BSONObj Hub::get_newest_finished(){
+        return m_ptr->m_con.findOne(m_prefix+"_jobs",
+                QUERY("state"<<TS_OK).sort("ftime"));
     }
 }
 

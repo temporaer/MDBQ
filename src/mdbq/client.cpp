@@ -8,8 +8,9 @@ namespace mdbq
 {
     struct ClientImpl{
         mongo::DBClientConnection m_con;
-        mongo::BSONObj m_current_task;
-        unsigned int m_interval;
+        mongo::BSONObj            m_current_task;
+        std::auto_ptr<mongo::BSONArrayBuilder>   m_log;
+        unsigned int              m_interval;
         std::auto_ptr<boost::asio::deadline_timer> m_timer;
         void update_check(Client* c, const boost::system::error_code& error){
             mongo::BSONObj task;
@@ -40,10 +41,10 @@ namespace mdbq
                 "findAndModify" << "gtest_jobs"<<
                 "query" << BSON("$and" <<
                     BSON_ARRAY(
-                        BSON("finished" <<mongo::LT<< 0) <<
-                        BSON("started" << mongo::LT<< 0)))<<
+                        BSON("ftime" <<mongo::LT<< 0) <<
+                        BSON("stime" << mongo::LT<< 0)))<<
                 "update"<<BSON("$set"<<
-                    BSON("started"<<stime
+                    BSON("stime"<<stime
                         <<"state"<<TS_ASSIGNED)));
         std::cout << "cmd: "<< cmd<<std::endl;
         //m_ptr->m_con.runCommand(m_prefix+"_jobs",cmd, res);
@@ -54,6 +55,9 @@ namespace mdbq
 
         ct = res["value"].Obj().copy();
         o = ct["payload"].Obj();
+
+        // start logging
+        m_ptr->m_log.reset(new mongo::BSONArrayBuilder());
         return true;
     }
     void Client::finish(const mongo::BSONObj& result, bool ok){
@@ -62,12 +66,14 @@ namespace mdbq
             throw std::runtime_error("get a task first before you finish!");
         }
 
+        this->checkpoint(); // flush logs
+
         long long int ftime = time(NULL);
         m_ptr->m_con.update(m_prefix+"_jobs",
                 QUERY("_id"<<ct["_id"]),
                 BSON("$set"<<BSON(
                     "state"<<(ok?TS_OK:TS_FAILED)<<
-                    "finished"<<ftime<<
+                    "ftime"<<ftime<<
                     "result"<<result)));
         ct = mongo::BSONObj(); // empty, call get_next_task.
     }
@@ -82,5 +88,37 @@ namespace mdbq
         finish(BSON("error"<<true));
     }
     Client::~Client(){}
+    void Client::log(const mongo::BSONObj& msg){
+        mongo::BSONObj& ct = m_ptr->m_current_task;
+        if(ct.isEmpty()){
+            throw std::runtime_error("get a task first before you log something about it!");
+        }
+        m_ptr->m_log->append(msg);
+    }
+    void Client::checkpoint(){
+        mongo::BSONObj& ct = m_ptr->m_current_task;
+        if(ct.isEmpty()){
+            throw std::runtime_error("get a task first before you call checkpoints!");
+        }
+
+        long long int ctime = time(NULL);
+        mongo::BSONObj update =                 
+            BSON(
+                    "$set"<<BSON(
+                            "state"<<TS_ASSIGNED<<
+                            "ping"<<ctime) <<
+                    "$pushAll"<< BSON(
+                            "log"<<m_ptr->m_log->arr())); 
+        std::cout << "Update: "<<update<<std::endl;
+        m_ptr->m_con.update(m_prefix+"_jobs",
+                QUERY("_id"<<ct["_id"]),
+                update);
+        m_ptr->m_log.reset(new mongo::BSONArrayBuilder());
+
+
+        std::string err = m_ptr->m_con.getLastError();
+        if(err.size())
+            throw std::runtime_error(err);
+    }
 
 }
