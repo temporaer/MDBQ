@@ -8,7 +8,7 @@ Own control flow:
 
     // in your server program instance:
     Hub hub("localhost", "test.col");
-    hub.insert_job(BSON("foo"<<1<<"bar<<2), 1000);
+    hub.insert_job(BSON("foo"<<1<<"bar<<2), 1000); // timeout in 1000 seconds
 
     // in your workers
     Client clt("localhost", "test.col");
@@ -20,10 +20,32 @@ Own control flow:
     clt.log(BSON("level"<<0<<"progress"<<"80%"));
     clt.finish(BSON("baz"<<3));
 
-Boost.Asio control flow:
+Boost.Asio control flow (preferred):
 
-    // similar to above, but you will have to overload handlers, then do
+    // on hub:
     boost::asio::io_service io;
-    clt.reg(io, 1); // on client
-    hub.reg(io, 1); // on hub
+    // [...]  (register polling of task generators)
+    hub.reg(io, 1); // poll every second
     io.run();
+
+    // on client:
+    struct my_client : pubic mdbq::Client{
+        my_client(string url, string prefix):mdbq::Client(url,prefix);
+        void handle_task(const BSONObj& o){ 
+            try{ /* do the task */ }
+            catch(mdbq::timeout_exception){/* do nothing */}
+        }
+    };
+    my_client clt("localhost", "test.mdbq");
+    clt.reg(io, 1); // poll every second
+    io.run();
+
+Issues:
+
+- Clients are not killed when timeouts occur, they will get a `timeout_exception' thrown
+  WHEN THEY CALL "checkpoint()". So you have to ensure that potentially
+  long-running functions call checkpoint() from time to time and catch this in
+  your main loop!
+
+- Poll frequency should not be too high. If you need tight loops, consider
+  using ZMQ or the like.
