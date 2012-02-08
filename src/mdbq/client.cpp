@@ -36,13 +36,15 @@ namespace mdbq
         }
         long long int stime = time(NULL);
 
+        std::string col;
+        std::string::size_type pos = m_prefix.find( "." );
+        if ( pos != std::string::npos )
+            col = m_prefix.substr( pos + 1 );
+
         mongo::BSONObj res, cmd;
         cmd = BSON(
-                "findAndModify" << "gtest_jobs"<<
-                "query" << BSON("$and" <<
-                    BSON_ARRAY(
-                        BSON("ftime" <<mongo::LT<< 0) <<
-                        BSON("stime" << mongo::LT<< 0)))<<
+                "findAndModify" << col+"_jobs"<<
+                "query" << BSON("state" << TS_OPEN)<<
                 "update"<<BSON("$set"<<
                     BSON("stime"<<stime
                         <<"state"<<TS_ASSIGNED)));
