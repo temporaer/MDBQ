@@ -27,6 +27,7 @@ namespace mdbq
             while(p->more()){
                 mongo::BSONObj f = p->next();
                 if(f["nfailed"].Int() < 1){// try again
+                    std::cerr << "HUB: warning: task `"<<f["_id"]<<"' timed out, rescheduling"<<std::endl;
                     m_con.update(m_prefix+"_jobs", 
                             QUERY("_id"<<f["_id"]), 
                             BSON(
@@ -35,6 +36,7 @@ namespace mdbq
                                 ));
                 }
                 else{
+                    std::cerr << "HUB: warning: task `"<<f["_id"]<<"' timed out for 2nd time, NOT rescheduling"<<std::endl;
                     m_con.update(m_prefix+"_jobs",  // set to failed
                             QUERY("_id"<<f["_id"]), 
                             BSON(

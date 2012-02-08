@@ -49,10 +49,10 @@ namespace mdbq
                 "update"<<BSON("$set"<<
                     BSON("stime"<<stime
                         <<"state"<<TS_ASSIGNED)));
-        std::cout << "cmd: "<< cmd<<std::endl;
+        //std::cout << "cmd: "<< cmd<<std::endl;
         //m_ptr->m_con.runCommand(m_prefix+"_jobs",cmd, res);
         m_ptr->m_con.runCommand("test",cmd, res);
-        std::cout << "res: "<<res<<std::endl;
+        //std::cout << "res: "<<res<<std::endl;
         if(res["value"].isNull())
             return false;
 
@@ -88,7 +88,7 @@ namespace mdbq
     }
     
     void Client::handle_task(const mongo::BSONObj& o){
-        std::cout <<"WARNING: got a task, but not handling it!"<<std::endl;
+        std::cerr <<"WARNING: got a task, but not handling it!"<<std::endl;
         finish(BSON("error"<<true));
     }
     Client::~Client(){}
@@ -129,7 +129,7 @@ namespace mdbq
                             "ping"<<ctime) <<
                     "$pushAll"<< BSON(
                             "log"<<m_ptr->m_log->arr())); 
-        std::cout << "Update: "<<update<<std::endl;
+        //std::cout << "Update: "<<update<<std::endl;
         m_ptr->m_con.update(m_prefix+"_jobs",
                 QUERY("_id"<<ct["_id"]),
                 update);
