@@ -9,6 +9,7 @@ namespace mdbq
     struct ClientImpl{
         mongo::DBClientConnection m_con;
         mongo::BSONObj            m_current_task;
+        long long int             m_current_task_stime;
         std::auto_ptr<mongo::BSONArrayBuilder>   m_log;
         unsigned int              m_interval;
         std::auto_ptr<boost::asio::deadline_timer> m_timer;
@@ -56,6 +57,7 @@ namespace mdbq
             return false;
 
         ct = res["value"].Obj().copy();
+        m_ptr->m_current_task_stime = stime;
         o = ct["payload"].Obj();
 
         // start logging
@@ -101,6 +103,22 @@ namespace mdbq
         mongo::BSONObj& ct = m_ptr->m_current_task;
         if(ct.isEmpty()){
             throw std::runtime_error("get a task first before you call checkpoints!");
+        }
+
+        {   // first, check for a timeout
+            mongo::BSONObj failcheck = m_ptr->m_con.findOne(m_prefix+"_jobs", 
+                    QUERY(
+                        "_id"<<ct["_id"]<<
+                        "$or"<<BSON_ARRAY(
+                            BSON("state"<<TS_FAILED) <<
+                            BSON("stime"<<mongo::NE<<m_ptr->m_current_task_stime))),
+                    &BSON("_id"<<1));
+            if(!failcheck.isEmpty()){
+                // clean up current state
+                m_ptr->m_current_task = mongo::BSONObj();
+                m_ptr->m_current_task_stime = 0;
+                throw timeout_exception();
+            }
         }
 
         long long int ctime = time(NULL);
