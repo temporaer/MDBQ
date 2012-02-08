@@ -39,6 +39,9 @@ namespace mdbq
             
             /**
              * insert job
+             * 
+             * @param job the job description
+             * @param timeout the timeout in seconds
              */
             void insert_job(const mongo::BSONObj& job, unsigned int timeout);
 
