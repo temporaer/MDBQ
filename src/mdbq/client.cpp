@@ -125,7 +125,7 @@ namespace mdbq
         mongo::BSONObj update =                 
             BSON(
                     "$set"<<BSON(
-                            "state"<<TS_ASSIGNED<<
+                            //"state"<<TS_ASSIGNED<<
                             "ping"<<ctime) <<
                     "$pushAll"<< BSON(
                             "log"<<m_ptr->m_log->arr())); 
