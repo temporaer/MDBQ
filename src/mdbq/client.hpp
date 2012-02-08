@@ -1,6 +1,7 @@
 #ifndef __MDBQ_CLIENT_HPP__
 #     define __MDBQ_CLIENT_HPP__
 
+#include <stdexcept>
 #include <boost/shared_ptr.hpp>
 #include <string>
 
@@ -16,6 +17,13 @@ namespace boost{
 
 namespace mdbq
 {
+
+    class timeout_exception : public std::runtime_error{
+        public:
+            timeout_exception() : std::runtime_error("MDBQ Timeout") {}
+    };
+
+
     struct ClientImpl;
     class Client{
         private:
