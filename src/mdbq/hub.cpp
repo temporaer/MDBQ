@@ -10,12 +10,40 @@ namespace mdbq
         mongo::DBClientConnection m_con;
 
         unsigned int m_interval;
+        std::string  m_prefix;
         std::auto_ptr<boost::asio::deadline_timer> m_timer;
         void update_check(Hub* c, const boost::system::error_code& error){
-            mongo::BSONObj task;
-            //size_t cnt = c->move_results_to_finished();
-            //if(cnt)
-            //    c->got_new_results();
+
+            // if a job takes too long, set it to `failed' so that client can stop working on it
+            std::auto_ptr<mongo::DBClientCursor> p =
+                m_con.query( m_prefix+"_jobs", 
+                        QUERY(
+                            "state"   << TS_ASSIGNED<<
+                            "$where"  << "this.timeout+this.stime < "+boost::lexical_cast<std::string>(time(NULL))),
+                        0,0,
+                        &BSON("_id"<<1 << 
+                            "nfailed"<<1)
+                        );
+            while(p->more()){
+                mongo::BSONObj f = p->next();
+                if(f["nfailed"].Int() < 1){// try again
+                    m_con.update(m_prefix+"_jobs", 
+                            QUERY("_id"<<f["_id"]), 
+                            BSON(
+                                "$inc" << BSON("nfailed"<<1)<<
+                                "$set" << BSON("state"<<TS_OPEN <<"stime"<<-1)
+                                ));
+                }
+                else{
+                    m_con.update(m_prefix+"_jobs",  // set to failed
+                            QUERY("_id"<<f["_id"]), 
+                            BSON(
+                                "$inc" << BSON("nfailed"<<1)<<
+                                "$set" << BSON("state"<<TS_FAILED)
+                                ));
+                }
+            }
+
             if(!error){
                 m_timer->expires_at(m_timer->expires_at() + boost::posix_time::seconds(m_interval));
                 m_timer->async_wait(boost::bind(&HubImpl::update_check,this,c,boost::asio::placeholders::error));
@@ -29,6 +57,7 @@ namespace mdbq
         m_ptr.reset(new HubImpl());
         m_ptr->m_con.connect(url);
         m_ptr->m_con.createCollection(prefix+"_jobs");
+        m_ptr->m_prefix = prefix;
     }
 
     void Hub::insert_job(const mongo::BSONObj& job, unsigned int timeout){
@@ -41,6 +70,7 @@ namespace mdbq
                     <<"ftime"  << -1
                     <<"stime"  << -1
                     <<"payload"  <<job
+                    <<"nfailed"  <<0
                     <<"state"    <<TS_OPEN
                     )
                 );
