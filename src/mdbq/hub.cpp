@@ -16,7 +16,7 @@ namespace mdbq
 
             // if a job takes too long, set it to `failed' so that client can stop working on it
             std::auto_ptr<mongo::DBClientCursor> p =
-                m_con.query( m_prefix+"_jobs", 
+                m_con.query( m_prefix+".jobs", 
                         QUERY(
                             "state"   << TS_ASSIGNED<<
                             "$where"  << "this.timeout+this.stime < "+boost::lexical_cast<std::string>(time(NULL))),
@@ -28,7 +28,7 @@ namespace mdbq
                 mongo::BSONObj f = p->next();
                 if(f["nfailed"].Int() < 1){// try again
                     std::cerr << "HUB: warning: task `"<<f["_id"]<<"' timed out, rescheduling"<<std::endl;
-                    m_con.update(m_prefix+"_jobs", 
+                    m_con.update(m_prefix+".jobs", 
                             QUERY("_id"<<f["_id"]), 
                             BSON(
                                 "$inc" << BSON("nfailed"<<1)<<
@@ -37,7 +37,7 @@ namespace mdbq
                 }
                 else{
                     std::cerr << "HUB: warning: task `"<<f["_id"]<<"' timed out for 2nd time, NOT rescheduling"<<std::endl;
-                    m_con.update(m_prefix+"_jobs",  // set to failed
+                    m_con.update(m_prefix+".jobs",  // set to failed
                             QUERY("_id"<<f["_id"]), 
                             BSON(
                                 "$inc" << BSON("nfailed"<<1)<<
@@ -58,14 +58,14 @@ namespace mdbq
     {
         m_ptr.reset(new HubImpl());
         m_ptr->m_con.connect(url);
-        m_ptr->m_con.createCollection(prefix+"_jobs");
+        m_ptr->m_con.createCollection(prefix+".jobs");
         m_ptr->m_prefix = prefix;
     }
 
     void Hub::insert_job(const mongo::BSONObj& job, unsigned int timeout){
         long long int ctime = time(NULL);
         long long int to    = timeout;
-        m_ptr->m_con.insert(m_prefix+"_jobs", 
+        m_ptr->m_con.insert(m_prefix+".jobs", 
                 BSON( mongo::GENOID
                     <<"timeout"  << to
                     <<"ctime"  << ctime
@@ -78,36 +78,37 @@ namespace mdbq
                 );
     }
     size_t Hub::get_n_open(){
-        return m_ptr->m_con.count(m_prefix+"_jobs", 
+        return m_ptr->m_con.count(m_prefix+".jobs", 
                 BSON( "state" << TS_OPEN));
     }
     size_t Hub::get_n_assigned(){
-        return m_ptr->m_con.count(m_prefix+"_jobs", 
+        return m_ptr->m_con.count(m_prefix+".jobs", 
                 BSON( "state" << TS_ASSIGNED));
     }
     size_t Hub::get_n_ok(){
-        return m_ptr->m_con.count(m_prefix+"_jobs", 
+        return m_ptr->m_con.count(m_prefix+".jobs", 
                 BSON( "state" << TS_OK));
     }
     size_t Hub::get_n_failed(){
-        return m_ptr->m_con.count(m_prefix+"_jobs", 
+        return m_ptr->m_con.count(m_prefix+".jobs", 
                 BSON( "state" << TS_FAILED));
     }
     void Hub::clear_all(){
-        m_ptr->m_con.dropCollection(m_prefix+"_jobs");
-        m_ptr->m_con.dropCollection(m_prefix+"_finished");
+        m_ptr->m_con.dropCollection(m_prefix+".jobs");
+        m_ptr->m_con.dropCollection(m_prefix+".fs.chunks");
+        m_ptr->m_con.dropCollection(m_prefix+".fs.files");
     }
     /*
      *size_t Hub::move_results_to_finished(){
      *    std::auto_ptr<mongo::DBClientCursor> p =
-     *        m_ptr->m_con.query( m_prefix+"_jobs",
+     *        m_ptr->m_con.query( m_prefix+".jobs",
      *                QUERY("finished" << mongo::GT <<  0));
      *    unsigned int cnt=0;
      *    while(p->more()){
      *        mongo::BSONObj f = p->next();
-     *        m_ptr->m_con.remove( m_prefix+"_jobs",
-     *                QUERY( "_id"<<f["_id"].OID() ));
-     *        m_ptr->m_con.insert( m_prefix+"_finished",
+     *        m_ptr->m_con.remove( m_prefix+".jobs",
+     *                QUERY( ".id"<<f[".id"].OID() ));
+     *        m_ptr->m_con.insert( m_prefix+".finished",
      *                f);
      *        cnt++;
      *    }
@@ -125,7 +126,7 @@ namespace mdbq
     }
 
     mongo::BSONObj Hub::get_newest_finished(){
-        return m_ptr->m_con.findOne(m_prefix+"_jobs",
+        return m_ptr->m_con.findOne(m_prefix+".jobs",
                 QUERY("state"<<TS_OK).sort("ftime"));
     }
 }
