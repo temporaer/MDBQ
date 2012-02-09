@@ -1,6 +1,9 @@
 #include <boost/asio.hpp>
+#include <boost/uuid/random_generator.hpp>
+#include <boost/uuid/uuid_io.hpp>
 #include <boost/bind.hpp>
 #include <mongo/client/dbclient.h>
+#include <mongo/client/gridfs.h>
 #include "client.hpp"
 #include "common.hpp"
 
@@ -9,6 +12,7 @@ namespace mdbq
     struct ClientImpl{
         mongo::DBClientConnection m_con;
         mongo::BSONObj            m_current_task;
+        std::auto_ptr<mongo::GridFS>             m_fs;
         long long int             m_current_task_stime;
         std::auto_ptr<mongo::BSONArrayBuilder>   m_log;
         unsigned int              m_interval;
@@ -18,17 +22,26 @@ namespace mdbq
             if(c->get_next_task(task))
                 c->handle_task(task);
             if(!error){
-                //Reschdule ourself
                 m_timer->expires_at(m_timer->expires_at() + boost::posix_time::seconds(m_interval));
                 m_timer->async_wait(boost::bind(&ClientImpl::update_check,this,c,boost::asio::placeholders::error));
             }
         }
     };
     Client::Client(const std::string& url, const std::string& prefix)
-        : m_prefix(prefix)
+        : m_jobcol(prefix+".jobs")
     {
         m_ptr.reset(new ClientImpl());
         m_ptr->m_con.connect(url);
+
+        std::string db, col;
+        std::string::size_type pos = prefix.find( "." );
+        if ( pos != std::string::npos ){
+            db  = prefix.substr( 0, pos );
+            col = prefix.substr( pos + 1 );
+        }
+        m_fscol = col + "_fs";// Note: may not contain any "."!!!
+        //m_fscol = db+".fs";
+        m_ptr->m_fs.reset(new mongo::GridFS(m_ptr->m_con, db, m_fscol));
     }
     bool Client::get_next_task(mongo::BSONObj& o){
         mongo::BSONObj& ct = m_ptr->m_current_task;
@@ -38,19 +51,19 @@ namespace mdbq
         long long int stime = time(NULL);
 
         std::string col;
-        std::string::size_type pos = m_prefix.find( "." );
+        std::string::size_type pos = m_jobcol.find( "." );
         if ( pos != std::string::npos )
-            col = m_prefix.substr( pos + 1 );
+            col = m_jobcol.substr( pos + 1 );
 
         mongo::BSONObj res, cmd;
         cmd = BSON(
-                "findAndModify" << col+"_jobs"<<
+                "findAndModify" << col<<
                 "query" << BSON("state" << TS_OPEN)<<
                 "update"<<BSON("$set"<<
                     BSON("stime"<<stime
                         <<"state"<<TS_ASSIGNED)));
         //std::cout << "cmd: "<< cmd<<std::endl;
-        //m_ptr->m_con.runCommand(m_prefix+"_jobs",cmd, res);
+        //m_ptr->m_con.runCommand(m_jobcol,cmd, res);
         m_ptr->m_con.runCommand("test",cmd, res);
         //std::cout << "res: "<<res<<std::endl;
         if(res["value"].isNull())
@@ -73,7 +86,7 @@ namespace mdbq
         this->checkpoint(); // flush logs
 
         long long int ftime = time(NULL);
-        m_ptr->m_con.update(m_prefix+"_jobs",
+        m_ptr->m_con.update(m_jobcol,
                 QUERY("_id"<<ct["_id"]),
                 BSON("$set"<<BSON(
                     "state"<<(ok?TS_OK:TS_FAILED)<<
@@ -99,6 +112,29 @@ namespace mdbq
         }
         m_ptr->m_log->append(msg);
     }
+    void Client::log(const char* ptr, size_t len, const mongo::BSONObj& msg){
+        mongo::BSONObj& ct = m_ptr->m_current_task;
+        if(ct.isEmpty()){
+            throw std::runtime_error("get a task first before you log something about it!");
+        }
+
+        boost::uuids::basic_random_generator<boost::mt19937> gen;
+        mongo::BSONObj ret = m_ptr->m_fs->storeFile(ptr,len, boost::lexical_cast<std::string>(gen()));
+        {
+            mongo::BSONObjBuilder bob;
+            bob.appendElements(ret);
+            bob.appendElements(msg);
+            m_ptr->m_con.update(m_fscol+".files",
+                    BSON("filename"<<ret.getField("filename")),
+                    bob.obj(),false,false);
+            std::cerr << "err: "<<m_ptr->m_con.getLastError()<<std::endl;
+        }
+
+        mongo::BSONObjBuilder bob;
+        bob.appendElements(msg);
+        bob.append("filename",ret["filename"].String());
+        m_ptr->m_log->append(bob.obj());
+    }
     void Client::checkpoint(){
         mongo::BSONObj& ct = m_ptr->m_current_task;
         if(ct.isEmpty()){
@@ -106,7 +142,7 @@ namespace mdbq
         }
 
         {   // first, check for a timeout
-            mongo::BSONObj failcheck = m_ptr->m_con.findOne(m_prefix+"_jobs", 
+            mongo::BSONObj failcheck = m_ptr->m_con.findOne(m_jobcol, 
                     QUERY(
                         "_id"<<ct["_id"]<<
                         "$or"<<BSON_ARRAY(
@@ -130,7 +166,7 @@ namespace mdbq
                     "$pushAll"<< BSON(
                             "log"<<m_ptr->m_log->arr())); 
         //std::cout << "Update: "<<update<<std::endl;
-        m_ptr->m_con.update(m_prefix+"_jobs",
+        m_ptr->m_con.update(m_jobcol,
                 QUERY("_id"<<ct["_id"]),
                 update);
         m_ptr->m_log.reset(new mongo::BSONArrayBuilder());

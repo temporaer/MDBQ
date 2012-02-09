@@ -28,7 +28,8 @@ namespace mdbq
     class Client{
         private:
             boost::shared_ptr<ClientImpl> m_ptr;
-            const std::string m_prefix;
+            std::string m_jobcol;
+            std::string m_fscol;
         public:
             Client(const std::string& url, const std::string& prefix);
             bool get_next_task(mongo::BSONObj& o);
@@ -41,7 +42,15 @@ namespace mdbq
              */
             void reg(boost::asio::io_service& io_service, unsigned int interval);
 
+            /**
+             * log a bson obj directly with the job
+             */
             void log(const mongo::BSONObj& msg);
+
+            /**
+             * log a file to gridfs, /refer/ to it in job log
+             */
+            void log(const char* ptr, size_t len, const mongo::BSONObj& msg);
 
             void checkpoint();
 

@@ -139,4 +139,13 @@ BOOST_AUTO_TEST_CASE(timeouts){
     BOOST_CHECK(wfc.caught);
     BOOST_CHECK_EQUAL(1, hub.get_n_failed());
 }
+
+BOOST_AUTO_TEST_CASE(filestorage){
+    hub.insert_job(BSON("foo"<<1<<"bar"<<2), 1);
+    mongo::BSONObj task;
+    clt.get_next_task(task);
+    const char* s = "hallihallohallihallohallihallohallihallohallihallo";
+    clt.log(s, strlen(s), BSON("baz"<<3));
+    clt.finish(BSON("baz"<<4));
+}
 BOOST_AUTO_TEST_SUITE_END()
