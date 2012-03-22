@@ -15,12 +15,14 @@
 
 using namespace mdbq;
 
+#define HOST "localhost"
+
 struct Fix{
     Hub hub;
     Client clt;
     Fix()
-        :hub("localhost","test.gtest")
-        ,clt("localhost","test.gtest")
+        :hub(HOST,"test.gtest")
+        ,clt(HOST,"test.gtest")
     {
         hub.clear_all();
     }
@@ -120,7 +122,7 @@ BOOST_AUTO_TEST_CASE(timeouts){
     BOOST_CHECK_EQUAL(hub.get_n_assigned(), 0);
 
     boost::asio::io_service hub_io, clt_io;
-    work_forever_client wfc("localhost","test.gtest");
+    work_forever_client wfc(HOST,"test.gtest");
     wfc.reg(clt_io,1);
     hub.reg(hub_io, 1);
 
