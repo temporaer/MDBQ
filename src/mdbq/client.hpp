@@ -30,6 +30,7 @@ namespace mdbq
             boost::shared_ptr<ClientImpl> m_ptr;
             std::string m_jobcol;
             std::string m_fscol;
+            std::string m_db;
         public:
             Client(const std::string& url, const std::string& prefix);
             bool get_next_task(mongo::BSONObj& o);

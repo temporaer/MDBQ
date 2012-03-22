@@ -38,6 +38,9 @@ namespace mdbq
         if ( pos != std::string::npos ){
             db  = prefix.substr( 0, pos );
             col = prefix.substr( pos + 1 );
+            m_db = db;
+        }else{
+            throw std::runtime_error("cannot parse prefix `"+prefix+"'");
         }
         m_fscol = col + "_fs";// Note: may not contain any "."!!!
         //m_fscol = db+".fs";
@@ -64,9 +67,9 @@ namespace mdbq
                         <<"state"<<TS_ASSIGNED)));
         //std::cout << "cmd: "<< cmd<<std::endl;
         //m_ptr->m_con.runCommand(m_jobcol,cmd, res);
-        m_ptr->m_con.runCommand("test",cmd, res);
+        m_ptr->m_con.runCommand(m_db,cmd, res);
         //std::cout << "res: "<<res<<std::endl;
-        if(res["value"].isNull())
+        if(!res["value"].isABSONObj())
             return false;
 
         ct = res["value"].Obj().copy();
@@ -127,7 +130,9 @@ namespace mdbq
             m_ptr->m_con.update(m_fscol+".files",
                     BSON("filename"<<ret.getField("filename")),
                     bob.obj(),false,false);
-            std::cerr << "err: "<<m_ptr->m_con.getLastError()<<std::endl;
+            std::string err = m_ptr->m_con.getLastError();
+            if(err.size())
+                throw std::runtime_error(err);
         }
 
         mongo::BSONObjBuilder bob;
