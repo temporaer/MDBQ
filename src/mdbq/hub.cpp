@@ -62,7 +62,7 @@ namespace mdbq
                             QUERY("_id"<<f["_id"]), 
                             BSON(
                                 "$inc" << BSON("nfailed"<<1)<<
-                                "$set" << BSON("state"<<TS_OPEN <<"stime"<<-1)
+                                "$set" << BSON("state"<<TS_OPEN <<"stime"<<(long long int)-1)
                                 ));
                 }
                 else{
@@ -99,8 +99,8 @@ namespace mdbq
                 BSON( mongo::GENOID
                     <<"timeout"  << to
                     <<"ctime"  << ctime
-                    <<"ftime"  << -1
-                    <<"stime"  << -1
+                    <<"ftime"  << (long long int)-1
+                    <<"stime"  << (long long int)-1
                     <<"payload"  <<job
                     <<"nfailed"  <<0
                     <<"state"    <<TS_OPEN
