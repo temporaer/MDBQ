@@ -21,8 +21,8 @@ struct Fix{
     Hub hub;
     Client clt;
     Fix()
-        :hub(HOST,"test.gtest")
-        ,clt(HOST,"test.gtest")
+        :hub(HOST,"test.mdbq")
+        ,clt(HOST,"test.mdbq")
     {
         hub.clear_all();
     }
@@ -122,8 +122,8 @@ BOOST_AUTO_TEST_CASE(timeouts){
     BOOST_CHECK_EQUAL(hub.get_n_assigned(), 0);
 
     boost::asio::io_service hub_io, clt_io;
-    work_forever_client wfc(HOST,"test.gtest");
-    wfc.reg(clt_io,1);
+    work_forever_client wfc(HOST,"test.mdbq");
+    wfc.reg(clt_io, 1);
     hub.reg(hub_io, 1);
 
     boost::asio::deadline_timer hub_dt(hub_io, boost::posix_time::seconds(6));
