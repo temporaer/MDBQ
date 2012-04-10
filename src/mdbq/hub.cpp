@@ -1,3 +1,4 @@
+#include <iomanip>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <mongo/client/dbclient.h>
@@ -12,7 +13,36 @@ namespace mdbq
         unsigned int m_interval;
         std::string  m_prefix;
         std::auto_ptr<boost::asio::deadline_timer> m_timer;
+        void print_current_job_summary(Hub* c, const boost::system::error_code& error){
+            std::auto_ptr<mongo::DBClientCursor> p =
+                m_con.query( m_prefix+".jobs", 
+                        QUERY( "state"   << mongo::GT<< -1).sort("ctime"));
+
+            std::cout << "JOB SUMMARY" << std::endl;
+            std::cout << "===========" << std::endl
+                    << std::setw(10)<<"_id"
+                    << std::setw(8) <<"nfailed"
+                    << std::setw(8) <<"ctime"
+                    << std::setw(10)<<"stime"
+                    << std::setw(10)<<"ftime"
+                    << std::setw(10)<<"deadline"
+                    << std::setw(10)<<"payload"
+                    << std::endl;
+            while(p->more()){
+                mongo::BSONObj f = p->next();
+                std::cout << "ASSIGNED: "
+                    << std::setw(10)<<f["_id"]
+                    << std::setw(8) <<f["nfailed"].Int()
+                    << std::setw(8) <<f["ctime"].Long()
+                    << std::setw(10)<<f["stime"].Long()
+                    << std::setw(10)<<f["ftime"].Long()
+                    << std::setw(10)<<f["stime"].Long()+f["timeout"].Long()
+                    << f["payload"]
+                    << std::endl;
+            }
+        }
         void update_check(Hub* c, const boost::system::error_code& error){
+            //print_current_job_summary(c,error);
 
             // if a job takes too long, set it to `failed' so that client can stop working on it
             std::auto_ptr<mongo::DBClientCursor> p =
