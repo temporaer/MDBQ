@@ -115,18 +115,38 @@ struct work_forever_client
     }
 };
 
+struct work_a_bit_client
+: public Client{
+    work_a_bit_client(std::string a, std::string b): Client(a,b),i(0){}
+    unsigned int i;
+    void handle_task(const mongo::BSONObj& o){
+        try{
+            boost::this_thread::sleep(boost::posix_time::seconds(0.01));
+            log(BSON("logging"<<i++));
+            checkpoint();
+            const char* s = "iafgiauhf iwu hfiuwh fpiuqwh feipuhweoifuh iwufeh iwufh 3q4uhf ";
+            log(s,strlen(s),BSON("logging"<<i++));
+            checkpoint();
+            finish(BSON("done"<<1));
+        }catch(timeout_exception){
+            std::cout <<"work_a_bit_client got timeout exception."<<std::endl;
+        }
+    }
+};
+
 BOOST_AUTO_TEST_CASE(timeouts){
     BOOST_CHECK_EQUAL(hub.get_n_open(), 0);
     hub.insert_job(BSON("foo"<<1<<"bar"<<2), 1);
     BOOST_CHECK_EQUAL(hub.get_n_open(), 1);
     BOOST_CHECK_EQUAL(hub.get_n_assigned(), 0);
+    BOOST_CHECK_EQUAL(hub.get_n_failed(), 0);
 
     boost::asio::io_service hub_io, clt_io;
     work_forever_client wfc(HOST,"test.mdbq");
     wfc.reg(clt_io, 1);
     hub.reg(hub_io, 1);
 
-    boost::asio::deadline_timer hub_dt(hub_io, boost::posix_time::seconds(6));
+    boost::asio::deadline_timer hub_dt(hub_io, boost::posix_time::seconds(7));
     hub_dt.async_wait(boost::bind(&boost::asio::io_service::stop, &hub_io));
 
     boost::asio::deadline_timer clt_dt(clt_io, boost::posix_time::seconds(6));
@@ -140,6 +160,38 @@ BOOST_AUTO_TEST_CASE(timeouts){
 
     BOOST_CHECK(wfc.caught);
     BOOST_CHECK_EQUAL(1, hub.get_n_failed());
+}
+
+BOOST_AUTO_TEST_CASE(hardcore){
+    boost::asio::io_service hub_io, clt1_io, clt2_io;
+    unsigned int n_jobs = 10000;
+    for (int i = 0; i < n_jobs; ++i)
+    {
+        hub.insert_job(BSON("foo"<<i<<"bar"<<i), 1);
+    }
+    work_a_bit_client wabc1(HOST,"test.mdbq");
+    work_a_bit_client wabc2(HOST,"test.mdbq");
+    wabc1.reg(clt1_io,0.01);
+    wabc2.reg(clt2_io,0.01);
+    hub.reg(hub_io, 0.1);
+
+    boost::asio::deadline_timer hub_dt(hub_io, boost::posix_time::seconds(30));
+    hub_dt.async_wait(boost::bind(&boost::asio::io_service::stop, &hub_io));
+
+    boost::asio::deadline_timer clt1_dt(clt1_io, boost::posix_time::seconds(30));
+    clt1_dt.async_wait(boost::bind(&boost::asio::io_service::stop, &clt1_io));
+
+    boost::asio::deadline_timer clt2_dt(clt2_io, boost::posix_time::seconds(30));
+    clt2_dt.async_wait(boost::bind(&boost::asio::io_service::stop, &clt2_io));
+
+    // start client thread
+    boost::thread clt1_thread(boost::bind(&boost::asio::io_service::run, &clt1_io));
+    boost::thread clt2_thread(boost::bind(&boost::asio::io_service::run, &clt2_io));
+    
+    hub_io.run();
+    clt1_thread.join();
+    clt2_thread.join();
+    BOOST_CHECK_EQUAL(n_jobs, hub.get_n_ok());
 }
 
 BOOST_AUTO_TEST_CASE(filestorage){
