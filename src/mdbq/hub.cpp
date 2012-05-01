@@ -101,6 +101,7 @@ namespace mdbq
                     <<"ctime"  << ctime
                     <<"ftime"  << (long long int)-1
                     <<"stime"  << (long long int)-1
+                    <<"ping"   << (long long int)-1
                     <<"payload"  <<job
                     <<"nfailed"  <<0
                     <<"state"    <<TS_OPEN
