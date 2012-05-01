@@ -14,7 +14,9 @@ namespace mdbq
         mongo::BSONObj            m_current_task;
         std::auto_ptr<mongo::GridFS>             m_fs;
         long long int             m_current_task_stime;
-        std::auto_ptr<mongo::BSONArrayBuilder>   m_log;
+        long long int             m_running_nr;
+        //std::auto_ptr<mongo::BSONArrayBuilder>   m_log;
+        std::vector<mongo::BSONObj> m_log;
         unsigned int              m_interval;
         std::auto_ptr<boost::asio::deadline_timer> m_timer;
         void update_check(Client* c, const boost::system::error_code& error){
@@ -29,6 +31,7 @@ namespace mdbq
     };
     Client::Client(const std::string& url, const std::string& prefix)
         : m_jobcol(prefix+".jobs")
+        , m_logcol(prefix+".log")
     {
         m_ptr.reset(new ClientImpl());
         m_ptr->m_con.connect(url);
@@ -74,10 +77,11 @@ namespace mdbq
 
         ct = res["value"].Obj().copy();
         m_ptr->m_current_task_stime = stime;
+        m_ptr->m_running_nr = 0;
         o = ct["payload"].Obj();
 
         // start logging
-        m_ptr->m_log.reset(new mongo::BSONArrayBuilder());
+        m_ptr->m_log.clear();
         return true;
     }
     void Client::finish(const mongo::BSONObj& result, bool ok){
@@ -113,7 +117,12 @@ namespace mdbq
         if(ct.isEmpty()){
             throw std::runtime_error("get a task first before you log something about it!");
         }
-        m_ptr->m_log->append(msg);
+        m_ptr->m_log.push_back(BSON( 
+                    mongo::GENOID<<
+                    "taskid"<<ct["_id"]<<
+                    "nr" << m_ptr->m_running_nr++ <<
+                    "ltime"<<(long long int)time(NULL)<<
+                    "msg"<<msg));
     }
     void Client::log(const char* ptr, size_t len, const mongo::BSONObj& msg){
         mongo::BSONObj& ct = m_ptr->m_current_task;
@@ -138,7 +147,14 @@ namespace mdbq
         mongo::BSONObjBuilder bob;
         bob.appendElements(msg);
         bob.append("filename",ret["filename"].String());
-        m_ptr->m_log->append(bob.obj());
+        m_ptr->m_log.push_back(BSON(
+                    mongo::GENOID<<
+                    "taskid"<<ct["_id"]<<
+                    "nr" << m_ptr->m_running_nr++ <<
+                    "ltime"<<(long long int)time(NULL)<<
+                    "filename" << ret["filename"].String()<<
+                    "msg"<<msg
+                    ));
     }
     void Client::checkpoint(){
         mongo::BSONObj& ct = m_ptr->m_current_task;
@@ -163,23 +179,34 @@ namespace mdbq
         }
 
         long long int ctime = time(NULL);
-        mongo::BSONObj update =                 
-            BSON(
-                    "$set"<<BSON(
-                            //"state"<<TS_ASSIGNED<<
-                            "ping"<<ctime) <<
-                    "$pushAll"<< BSON(
-                            "log"<<m_ptr->m_log->arr())); 
-        //std::cout << "Update: "<<update<<std::endl;
         m_ptr->m_con.update(m_jobcol,
                 QUERY("_id"<<ct["_id"]),
-                update);
-        m_ptr->m_log.reset(new mongo::BSONArrayBuilder());
-
+                BSON( "$set"<<BSON("ping"<<ctime)));
 
         std::string err = m_ptr->m_con.getLastError();
         if(err.size())
             throw std::runtime_error(err);
+
+        if(m_ptr->m_log.size()) {
+            m_ptr->m_con.insert(m_logcol, m_ptr->m_log);
+            m_ptr->m_log.clear();
+            std::string err = m_ptr->m_con.getLastError();
+            if(err.size())
+                throw std::runtime_error(err);
+        }
+
+    }
+    std::vector<mongo::BSONObj> 
+    Client::get_log(const mongo::BSONObj& task){
+        std::auto_ptr<mongo::DBClientCursor> p =
+            m_ptr->m_con.query( m_logcol, 
+                    QUERY("taskid" << task["_id"]).sort("nr"));
+        std::vector<mongo::BSONObj> log;
+        while(p->more()){
+            mongo::BSONObj f = p->next();
+            log.push_back(f);
+        }
+        return log;
     }
 
 }

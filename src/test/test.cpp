@@ -70,13 +70,14 @@ BOOST_AUTO_TEST_CASE(logging){
 
     clt.finish(BSON("baz"<<3));
     mongo::BSONObj t = hub.get_newest_finished();
+    std::vector<mongo::BSONObj> log = clt.get_log(t);
     BOOST_CHECK_EQUAL(t["result"]["baz"].Int(), 3);
-    BOOST_CHECK_EQUAL(t["log"].Array()[0]["level"].Int(), 0);
-    BOOST_CHECK_EQUAL(t["log"].Array()[0]["num"].Int(), 1);
-    BOOST_CHECK_EQUAL(t["log"].Array()[1]["level"].Int(), 0);
-    BOOST_CHECK_EQUAL(t["log"].Array()[1]["num"].Int(), 2);
-    BOOST_CHECK_EQUAL(t["log"].Array()[2]["level"].Int(), 0);
-    BOOST_CHECK_EQUAL(t["log"].Array()[2]["num"].Int(), 3);
+    BOOST_CHECK_EQUAL(log[0]["msg"]["level"].Int(), 0);
+    BOOST_CHECK_EQUAL(log[0]["msg"]["num"].Int(), 1);
+    BOOST_CHECK_EQUAL(log[1]["msg"]["level"].Int(), 0);
+    BOOST_CHECK_EQUAL(log[1]["msg"]["num"].Int(), 2);
+    BOOST_CHECK_EQUAL(log[2]["msg"]["level"].Int(), 0);
+    BOOST_CHECK_EQUAL(log[2]["msg"]["num"].Int(), 3);
 }
 
 BOOST_AUTO_TEST_CASE(client_loop){
@@ -164,7 +165,7 @@ BOOST_AUTO_TEST_CASE(timeouts){
 
 BOOST_AUTO_TEST_CASE(hardcore){
     boost::asio::io_service hub_io, clt1_io, clt2_io;
-    unsigned int n_jobs = 10000;
+    unsigned int n_jobs = 1000;
     for (int i = 0; i < n_jobs; ++i)
     {
         hub.insert_job(BSON("foo"<<i<<"bar"<<i), 1);

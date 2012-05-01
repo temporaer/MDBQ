@@ -2,6 +2,7 @@
 #     define __MDBQ_CLIENT_HPP__
 
 #include <stdexcept>
+#include <vector>
 #include <boost/shared_ptr.hpp>
 #include <string>
 
@@ -29,6 +30,7 @@ namespace mdbq
         private:
             boost::shared_ptr<ClientImpl> m_ptr;
             std::string m_jobcol;
+            std::string m_logcol;
             std::string m_fscol;
             std::string m_db;
         public:
@@ -52,6 +54,11 @@ namespace mdbq
              * log a file to gridfs, /refer/ to it in job log
              */
             void log(const char* ptr, size_t len, const mongo::BSONObj& msg);
+
+            /**
+             * get the log of a task (mainly for testing)
+             */
+            std::vector<mongo::BSONObj> get_log(const mongo::BSONObj& task);
 
             void checkpoint();
 
