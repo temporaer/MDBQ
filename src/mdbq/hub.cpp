@@ -103,7 +103,7 @@ namespace mdbq
                     <<"stime"  << (long long int)-1
                     <<"ping"   << (long long int)-1
                     <<"payload"  <<job
-                    <<"nfailed"  <<0
+                    <<"nfailed"  << (int)0
                     <<"state"    <<TS_OPEN
                     )
                 );
