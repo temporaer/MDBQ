@@ -40,7 +40,10 @@ namespace mdbq
             if(c->get_next_task(task))
                 c->handle_task(task);
             if(!error){
-                m_timer->expires_at(m_timer->expires_at() + boost::posix_time::seconds(m_interval));
+                if(m_interval == 1)
+                    m_timer->expires_at(m_timer->expires_at() + boost::posix_time::millisec(rand()%(m_interval*1000-500)));
+                else
+                    m_timer->expires_at(m_timer->expires_at() + boost::posix_time::seconds(1) + boost::posix_time::millisec(rand()%(m_interval*1000-1000)));
                 m_timer->async_wait(boost::bind(&ClientImpl::update_check,this,c,boost::asio::placeholders::error));
             }
         }
@@ -83,7 +86,7 @@ namespace mdbq
         CHECK_DB_ERR(m_ptr->m_con);
         //std::cout << "res: "<<res<<std::endl;
         if(!res["value"].isABSONObj())
-            return false;
+                return false;
 
         int timeout_s = INT_MAX;
         if(m_ptr->m_current_task.hasField("timeout"))

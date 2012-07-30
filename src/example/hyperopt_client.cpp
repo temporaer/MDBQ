@@ -26,6 +26,8 @@ struct hyperopt_client
         float loss = ((x-3)*(x-3));
         std::cout << id <<": x = " << x << ", loss = "<< loss << std::endl;
 
+        boost::this_thread::sleep(boost::posix_time::seconds(3));
+
         try{
             finish(BSON("status"<<"ok"<<"loss"<<loss));
         }catch(timeout_exception){
