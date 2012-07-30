@@ -7,6 +7,21 @@
 
 using namespace mdbq;
 
+/**
+ * A sample client for the quadratic1 bandit from HyperOpt.
+ *
+ * You should start hyperopt search like so:
+ *
+ * @code
+ * hyperopt-mongo-search hyperopt.bandits.quadratic1 hyperopt.tpe.TreeParzenEstimator --mongo localhost/hyperopt --poll-interval=1
+ * @endcode
+ *
+ * This client can be compiled using
+ * @code
+ * g++ hyperopt_client.cpp -lmdbq -lboost_thread -lboost_system -lboost_filesystem
+ * @endcode
+ * obviously, it requires MDBQ to be installed.
+ */
 struct hyperopt_client
 : public Client{
     int id;
@@ -44,16 +59,17 @@ struct hyperopt_client
 int
 main(int argc, char **argv)
 {
+    // start n_clt worker threads
     static const int n_clt = 5;
     hyperopt_client* clients[n_clt];
     boost::thread*   threads[n_clt];
 
     for (int i = 0; i < n_clt; ++i) {
-        std::cout << "starting client "<<i<<std::endl;
-        clients[i] = new hyperopt_client(i, "131.220.7.92", "hyperopt");
+        clients[i] = new hyperopt_client(i, "localhost", "hyperopt");
         threads[i] = new boost::thread(boost::bind(&hyperopt_client::run, clients[i]));
     }
 
+    // let them work for a while
     boost::this_thread::sleep(boost::posix_time::seconds(60));
 
     return 0;
