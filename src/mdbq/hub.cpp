@@ -43,7 +43,7 @@ namespace mdbq
                     << std::setw(16)<<"book_time"
                     << std::setw(16)<<"finish_time"
                     << std::setw(16)<<"deadline"
-                    << std::setw(16)<<"spec"
+                    << std::setw(16)<<"misc"
                     << std::endl;
             while(p->more()){
                 mongo::BSONObj f = p->next();
@@ -57,7 +57,7 @@ namespace mdbq
                     << std::setw(16)<<dt_format(bson_to_ptime(f["book_time"]))
                     << std::setw(16)<<dt_format(bson_to_ptime(f["finish_time"]))
                     << std::setw(16)<<dt_format(bson_to_ptime(f["book_time"])+boost::posix_time::seconds(f["timeout"].Int()))
-                    << " " << f["spec"]
+                    << " " << f["misc"]
                     << std::endl;
             }
         }
@@ -126,9 +126,10 @@ namespace mdbq
                     <<"finish_time" << ptime_to_bson(boost::posix_time::max_date_time)
                     <<"book_time"   << ptime_to_bson(boost::posix_time::max_date_time)
                     <<"refresh_time"<< ptime_to_bson(boost::posix_time::min_date_time)
-                    <<"spec"        << job
+                    <<"misc"        << job
                     <<"nfailed"     << (int)0
                     <<"state"       << TS_NEW
+                    <<"result"      << BSON("status"<<"new")
                     )
                 );
         CHECK_DB_ERR(m_ptr->m_con);
@@ -151,6 +152,7 @@ namespace mdbq
     }
     void Hub::clear_all(){
         m_ptr->m_con.dropCollection(m_prefix+".jobs");
+        m_ptr->m_con.dropCollection(m_prefix+".log");
         m_ptr->m_con.dropCollection(m_prefix+".fs.chunks");
         m_ptr->m_con.dropCollection(m_prefix+".fs.files");
     }

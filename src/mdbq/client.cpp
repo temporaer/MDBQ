@@ -1,3 +1,4 @@
+#include <boost/format.hpp>
 #include <boost/asio.hpp>
 #include <boost/uuid/random_generator.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -65,7 +66,7 @@ namespace mdbq
 
         std::string hostname(256, '\0');
         gethostname(&hostname[0], 256);
-        unsigned int pid = getpid();
+        std::string hostname_pid = (boost::format("%s:%d") % &hostname[0] % getpid()).str();
 
         mongo::BSONObj res, cmd;
         cmd = BSON(
@@ -75,7 +76,7 @@ namespace mdbq
                     BSON("book_time"<<bson_now
                         <<"state"<<TS_RUNNING
                         <<"refresh_time"<<bson_now
-                        <<"owner"<<BSON_ARRAY(&hostname[0]<<pid))));
+                        <<"owner"<<hostname_pid)));
         //std::cout << "cmd: "<< cmd<<std::endl;
         //m_ptr->m_con.runCommand(m_jobcol,cmd, res);
         m_ptr->m_con.runCommand(m_db,cmd, res);
@@ -84,11 +85,14 @@ namespace mdbq
         if(!res["value"].isABSONObj())
             return false;
 
+        int timeout_s = INT_MAX;
+        if(m_ptr->m_current_task.hasField("timeout"))
+            timeout_s = m_ptr->m_current_task["timeout"].Int();
         m_ptr->m_current_task = res["value"].Obj().copy();
         m_ptr->m_current_task_book_time = now;
         m_ptr->m_running_nr = 0;
-        m_ptr->m_current_task_timeout_time = now + boost::posix_time::seconds(m_ptr->m_current_task["timeout"].Int());
-        o = m_ptr->m_current_task["spec"].Obj();
+        m_ptr->m_current_task_timeout_time = now + boost::posix_time::seconds(timeout_s);
+        o = m_ptr->m_current_task["misc"].Obj();
 
         // start logging
         m_ptr->m_log.clear();
@@ -188,15 +192,14 @@ namespace mdbq
             if(now >= m_ptr->m_current_task_timeout_time){
                 std::string hostname(256, '\0');
                 gethostname(&hostname[0], 256);
-                unsigned int pid = getpid();
+                std::string hostname_pid = (boost::format("%s:%d") % &hostname[0] % getpid()).str();
 
                 // set to failed in DB
                 m_ptr->m_con.update(m_jobcol, 
                         QUERY("_id"<<ct["_id"] << 
                             // do not overwrite job that has been taken by someone else!
                             // this may happen due to timeouts and rescheduling.
-                            "owner"<<BSON_ARRAY(&hostname[0] << pid)
-                            ),
+                            "owner"<<hostname_pid),
                         BSON("$set" << 
                             BSON("state"<<TS_FAILED<< 
                                  "error"<<"timeout")));
