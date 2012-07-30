@@ -21,8 +21,8 @@ struct Fix{
     Hub hub;
     Client clt;
     Fix()
-        :hub(HOST,"test.mdbq")
-        ,clt(HOST,"test.mdbq")
+        :hub(HOST,"test_mdbq")
+        ,clt(HOST,"test_mdbq")
     {
         hub.clear_all();
     }
@@ -62,22 +62,25 @@ BOOST_AUTO_TEST_CASE(logging){
     mongo::BSONObj task;
     BOOST_CHECK(clt.get_next_task(task));
     BOOST_CHECK(!task.isEmpty());
-    clt.log(BSON("level"<<0<<"num"<<1));
-    clt.log(BSON("level"<<0<<"num"<<2));
+    clt.log(0, BSON("foo"<<0<<"num"<<1));
+    clt.log(4, BSON("foo"<<0<<"num"<<2));
     clt.checkpoint();
-    clt.log(BSON("level"<<0<<"num"<<3));
+    clt.log(5, BSON("foo"<<0<<"num"<<3));
     clt.checkpoint();
 
     clt.finish(BSON("baz"<<3));
     mongo::BSONObj t = hub.get_newest_finished();
     std::vector<mongo::BSONObj> log = clt.get_log(t);
     BOOST_CHECK_EQUAL(t["result"]["baz"].Int(), 3);
-    BOOST_CHECK_EQUAL(log[0]["msg"]["level"].Int(), 0);
+    BOOST_CHECK_EQUAL(log[0]["msg"]["foo"].Int(), 0);
+    BOOST_CHECK_EQUAL(log[0]["level"].Int(), 0);
     BOOST_CHECK_EQUAL(log[0]["msg"]["num"].Int(), 1);
-    BOOST_CHECK_EQUAL(log[1]["msg"]["level"].Int(), 0);
+    BOOST_CHECK_EQUAL(log[1]["msg"]["foo"].Int(), 0);
     BOOST_CHECK_EQUAL(log[1]["msg"]["num"].Int(), 2);
-    BOOST_CHECK_EQUAL(log[2]["msg"]["level"].Int(), 0);
+    BOOST_CHECK_EQUAL(log[1]["level"].Int(), 4);
+    BOOST_CHECK_EQUAL(log[2]["msg"]["foo"].Int(), 0);
     BOOST_CHECK_EQUAL(log[2]["msg"]["num"].Int(), 3);
+    BOOST_CHECK_EQUAL(log[2]["level"].Int(), 5);
 }
 
 BOOST_AUTO_TEST_CASE(client_loop){
@@ -122,10 +125,10 @@ struct work_a_bit_client
     void handle_task(const mongo::BSONObj& o){
         try{
             boost::this_thread::sleep(boost::posix_time::seconds(0.01));
-            log(BSON("logging"<<i++));
+            log(0, BSON("logging"<<i++));
             checkpoint();
             const char* s = "iafgiauhf iwu hfiuwh fpiuqwh feipuhweoifuh iwufeh iwufh 3q4uhf ";
-            log(s,strlen(s),BSON("logging"<<i++));
+            log(0, s,strlen(s),BSON("logging"<<i++));
             checkpoint();
             finish(BSON("done"<<1));
         }catch(timeout_exception){
@@ -142,7 +145,7 @@ BOOST_AUTO_TEST_CASE(timeouts){
     BOOST_CHECK_EQUAL(hub.get_n_failed(), 0);
 
     boost::asio::io_service hub_io, clt_io;
-    work_forever_client wfc(HOST,"test.mdbq");
+    work_forever_client wfc(HOST,"test_mdbq");
     wfc.reg(clt_io, 1);
     hub.reg(hub_io, 1);
 
@@ -169,8 +172,8 @@ BOOST_AUTO_TEST_CASE(hardcore){
     {
         hub.insert_job(BSON("foo"<<i<<"bar"<<i), 1);
     }
-    work_a_bit_client wabc1(HOST,"test.mdbq");
-    work_a_bit_client wabc2(HOST,"test.mdbq");
+    work_a_bit_client wabc1(HOST,"test_mdbq");
+    work_a_bit_client wabc2(HOST,"test_mdbq");
     wabc1.reg(clt1_io,0.01);
     wabc2.reg(clt2_io,0.01);
     hub.reg(hub_io, 0.1);
@@ -200,7 +203,7 @@ BOOST_AUTO_TEST_CASE(filestorage){
     mongo::BSONObj task;
     clt.get_next_task(task);
     const char* s = "hallihallohallihallohallihallohallihallohallihallo";
-    clt.log(s, strlen(s), BSON("baz"<<3));
+    clt.log(0, s, strlen(s), BSON("baz"<<3));
     clt.finish(BSON("baz"<<4));
 }
 BOOST_AUTO_TEST_SUITE_END()

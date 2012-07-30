@@ -48,12 +48,12 @@ namespace mdbq
             /**
              * log a bson obj directly with the job
              */
-            void log(const mongo::BSONObj& msg);
+            void log(int level, const mongo::BSONObj& msg);
 
             /**
              * log a file to gridfs, /refer/ to it in job log
              */
-            void log(const char* ptr, size_t len, const mongo::BSONObj& msg);
+            void log(int level, const char* ptr, size_t len, const mongo::BSONObj& msg);
 
             /**
              * get the log of a task (mainly for testing)

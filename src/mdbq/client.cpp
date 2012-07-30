@@ -47,23 +47,14 @@ namespace mdbq
     Client::Client(const std::string& url, const std::string& prefix)
         : m_jobcol(prefix+".jobs")
         , m_logcol(prefix+".log")
+        , m_fscol(prefix+".fs")
     {
         m_ptr.reset(new ClientImpl());
         m_ptr->m_con.connect(url);
         CHECK_DB_ERR(m_ptr->m_con);
 
-        std::string db, col;
-        std::string::size_type pos = prefix.find( "." );
-        if ( pos != std::string::npos ){
-            db  = prefix.substr( 0, pos );
-            col = prefix.substr( pos + 1 );
-            m_db = db;
-        }else{
-            throw std::runtime_error("MDBQC: cannot parse prefix `"+prefix+"'");
-        }
-        m_fscol = col + "_fs";// Note: may not contain any "."!!!
-        //m_fscol = db+".fs";
-        m_ptr->m_fs.reset(new mongo::GridFS(m_ptr->m_con, db, m_fscol));
+        m_db = prefix;
+        m_ptr->m_fs.reset(new mongo::GridFS(m_ptr->m_con, m_db, "fs"));
     }
     bool Client::get_next_task(mongo::BSONObj& o){
         if(!m_ptr->m_current_task.isEmpty()){
@@ -72,18 +63,13 @@ namespace mdbq
         boost::posix_time::ptime now = universal_date_time();
         mongo::BSONArray bson_now(ptime_to_bson(now));
 
-        std::string col;
-        std::string::size_type pos = m_jobcol.find( "." );
-        if ( pos != std::string::npos )
-            col = m_jobcol.substr( pos + 1 );
-
         std::string hostname(256, '\0');
         gethostname(&hostname[0], 256);
         unsigned int pid = getpid();
 
         mongo::BSONObj res, cmd;
         cmd = BSON(
-                "findAndModify" << col<<
+                "findAndModify" << "jobs" <<
                 "query" << BSON("state" << TS_NEW)<<
                 "update"<<BSON("$set"<<
                     BSON("book_time"<<bson_now
@@ -145,7 +131,7 @@ namespace mdbq
         finish(BSON("error"<<true));
     }
     Client::~Client(){ }
-    void Client::log(const mongo::BSONObj& msg){
+    void Client::log(int level, const mongo::BSONObj& msg){
         const mongo::BSONObj& ct = m_ptr->m_current_task;
         if(ct.isEmpty()){
             throw std::runtime_error("MDBQC: get a task first before you log something about it!");
@@ -154,11 +140,12 @@ namespace mdbq
         m_ptr->m_log.push_back(BSON( 
                     mongo::GENOID<<
                     "taskid"<<ct["_id"]<<
+                    "level"<<level<<
                     "nr" << m_ptr->m_running_nr++ <<
                     "timestamp"<< ptime_to_bson(now)<<
                     "msg"<<msg));
     }
-    void Client::log(const char* ptr, size_t len, const mongo::BSONObj& msg){
+    void Client::log(int level, const char* ptr, size_t len, const mongo::BSONObj& msg){
         mongo::BSONObj& ct = m_ptr->m_current_task;
         if(ct.isEmpty()){
             throw std::runtime_error("MDBQC: get a task first before you log something about it!");
@@ -166,6 +153,7 @@ namespace mdbq
 
         boost::uuids::basic_random_generator<boost::mt19937> gen;
         mongo::BSONObj ret = m_ptr->m_fs->storeFile(ptr,len, boost::lexical_cast<std::string>(gen()));
+        CHECK_DB_ERR(m_ptr->m_con);
         {
             mongo::BSONObjBuilder bob;
             bob.appendElements(ret);
@@ -182,8 +170,9 @@ namespace mdbq
         m_ptr->m_log.push_back(BSON(
                     mongo::GENOID<<
                     "taskid"<<ct["_id"]<<
+                    "level"<<level<<
                     "nr" << m_ptr->m_running_nr++ <<
-                    "ltime"<<(long long int)time(NULL)<<
+                    "timestamp"<<ptime_to_bson(universal_date_time())<<
                     "filename" << ret["filename"].String()<<
                     "msg"<<msg
                     ));
