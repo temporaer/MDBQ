@@ -13,12 +13,12 @@ using namespace mdbq;
  * You should start hyperopt search like so:
  *
  * @code
- * hyperopt-mongo-search hyperopt.bandits.quadratic1 hyperopt.tpe.TreeParzenEstimator --mongo localhost/hyperopt --poll-interval=1
+ * $ hyperopt-mongo-search hyperopt.bandits.quadratic1 hyperopt.tpe.TreeParzenEstimator --mongo localhost/hyperopt --poll-interval=1
  * @endcode
  *
  * This client can be compiled using
  * @code
- * g++ hyperopt_client.cpp -lmdbq -lboost_thread -lboost_system -lboost_filesystem
+ * $ g++ hyperopt_client.cpp -lmdbq -lboost_thread -lboost_system -lboost_filesystem
  * @endcode
  * obviously, it requires MDBQ to be installed.
  */
@@ -43,11 +43,7 @@ struct hyperopt_client
 
         boost::this_thread::sleep(boost::posix_time::seconds(3));
 
-        try{
-            finish(BSON("status"<<"ok"<<"loss"<<loss));
-        }catch(timeout_exception){
-            std::cout <<"HOC: got timeout exception."<<std::endl;
-        }
+        finish(BSON("status"<<"ok"<<"loss"<<loss));
     }
     void run(){
         std::cout << "running client id:" << id << std::endl;
