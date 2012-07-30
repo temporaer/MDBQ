@@ -15,7 +15,7 @@
 
 using namespace mdbq;
 
-#define HOST "localhost"
+#define HOST "131.220.7.92"
 
 struct Fix{
     Hub hub;
@@ -100,18 +100,17 @@ BOOST_AUTO_TEST_CASE(client_loop){
 
 struct work_forever_client
 : public Client{
-    work_forever_client(std::string a, std::string b): Client(a,b){}
-    bool caught;
+    work_forever_client(std::string a, std::string b): Client(a,b),caught(0){}
+    int caught;
     void handle_task(const mongo::BSONObj& o){
-        caught=false;
         try{
             while(true){
                 boost::this_thread::sleep(boost::posix_time::seconds(1));
                 checkpoint();
             }
         }catch(timeout_exception){
-            std::cout <<"work_forever_client got timeout exception. Surprise."<<std::endl;
-            caught=true;
+            std::cout <<"TEST: work_forever_client got timeout exception. Surprise."<<std::endl;
+            caught++;
         }
     }
 };
@@ -137,7 +136,7 @@ struct work_a_bit_client
 
 BOOST_AUTO_TEST_CASE(timeouts){
     BOOST_CHECK_EQUAL(hub.get_n_open(), 0);
-    hub.insert_job(BSON("foo"<<1<<"bar"<<2), 1);
+    hub.insert_job(BSON("timeouts_test"<<1<<"bar"<<2), 1);
     BOOST_CHECK_EQUAL(hub.get_n_open(), 1);
     BOOST_CHECK_EQUAL(hub.get_n_assigned(), 0);
     BOOST_CHECK_EQUAL(hub.get_n_failed(), 0);
@@ -147,10 +146,10 @@ BOOST_AUTO_TEST_CASE(timeouts){
     wfc.reg(clt_io, 1);
     hub.reg(hub_io, 1);
 
-    boost::asio::deadline_timer hub_dt(hub_io, boost::posix_time::seconds(7));
+    boost::asio::deadline_timer hub_dt(hub_io, boost::posix_time::seconds(12));
     hub_dt.async_wait(boost::bind(&boost::asio::io_service::stop, &hub_io));
 
-    boost::asio::deadline_timer clt_dt(clt_io, boost::posix_time::seconds(6));
+    boost::asio::deadline_timer clt_dt(clt_io, boost::posix_time::seconds(7));
     clt_dt.async_wait(boost::bind(&boost::asio::io_service::stop, &clt_io));
 
     // start client thread
@@ -159,7 +158,7 @@ BOOST_AUTO_TEST_CASE(timeouts){
     hub_io.run();
     clt_thread.join();
 
-    BOOST_CHECK(wfc.caught);
+    BOOST_CHECK_EQUAL(wfc.caught, 2); // should be rescheduled and fail a 2nd time
     BOOST_CHECK_EQUAL(1, hub.get_n_failed());
 }
 
@@ -176,19 +175,20 @@ BOOST_AUTO_TEST_CASE(hardcore){
     wabc2.reg(clt2_io,0.01);
     hub.reg(hub_io, 0.1);
 
-    boost::asio::deadline_timer hub_dt(hub_io, boost::posix_time::seconds(30));
+    boost::asio::deadline_timer hub_dt(hub_io, boost::posix_time::seconds(20));
     hub_dt.async_wait(boost::bind(&boost::asio::io_service::stop, &hub_io));
 
-    boost::asio::deadline_timer clt1_dt(clt1_io, boost::posix_time::seconds(30));
+    boost::asio::deadline_timer clt1_dt(clt1_io, boost::posix_time::seconds(20));
     clt1_dt.async_wait(boost::bind(&boost::asio::io_service::stop, &clt1_io));
 
-    boost::asio::deadline_timer clt2_dt(clt2_io, boost::posix_time::seconds(30));
+    boost::asio::deadline_timer clt2_dt(clt2_io, boost::posix_time::seconds(20));
     clt2_dt.async_wait(boost::bind(&boost::asio::io_service::stop, &clt2_io));
 
     // start client thread
     boost::thread clt1_thread(boost::bind(&boost::asio::io_service::run, &clt1_io));
     boost::thread clt2_thread(boost::bind(&boost::asio::io_service::run, &clt2_io));
     
+	std::cout << "TEST: Starting many-job-test, takes 20s to finish" << std::endl;
     hub_io.run();
     clt1_thread.join();
     clt2_thread.join();

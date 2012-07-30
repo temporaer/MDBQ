@@ -42,8 +42,9 @@ namespace mdbq
              * 
              * @param job the job description
              * @param timeout the timeout in seconds
+             * @param driver an identifier of the driver that created the job
              */
-            void insert_job(const mongo::BSONObj& job, unsigned int timeout);
+            void insert_job(const mongo::BSONObj& job, unsigned int timeout, const std::string& driver="mdbq::hub");
 
             /**
              * get newest finished job (primarily for testing)

@@ -60,7 +60,10 @@ namespace mdbq
              */
             std::vector<mongo::BSONObj> get_log(const mongo::BSONObj& task);
 
-            void checkpoint();
+            /**
+             * flush logs and check for timeouts (throws timeout_exception)
+             */
+            void checkpoint(bool check_for_timeout=true);
 
             virtual void handle_task(const mongo::BSONObj& task);
             
