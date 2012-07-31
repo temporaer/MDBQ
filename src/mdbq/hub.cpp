@@ -53,10 +53,10 @@ namespace mdbq
                     << std::setw(8) <<f["state"].Int()
                     << std::setw(8) <<f["nfailed"].Int()
                     << std::setw(10) <<f["owner"].Array()[0].String()
-                    << std::setw(16)<<dt_format(bson_to_ptime(f["create_time"]))
-                    << std::setw(16)<<dt_format(bson_to_ptime(f["book_time"]))
-                    << std::setw(16)<<dt_format(bson_to_ptime(f["finish_time"]))
-                    << std::setw(16)<<dt_format(bson_to_ptime(f["book_time"])+boost::posix_time::seconds(f["timeout"].Int()))
+                    << std::setw(16)<<dt_format(to_ptime(f["create_time"].Date()))
+                    << std::setw(16)<<dt_format(to_ptime(f["book_time"].Date()))
+                    << std::setw(16)<<dt_format(to_ptime(f["finish_time"].Date()))
+                    << std::setw(16)<<dt_format(to_ptime(f["book_time"].Date())+boost::posix_time::seconds(f["timeout"].Int()))
                     << " " << f["misc"]
                     << std::endl;
             }
@@ -80,7 +80,6 @@ namespace mdbq
                 if(!f.hasField("nfailed"))
                     continue;
 
-                boost::posix_time::ptime now = universal_date_time();
                 std::cerr << "HUB: warning: task `"
                     << f["_id"] << "' on `"
                     << f["owner"].Array()[0].String() << "' ("
@@ -92,9 +91,8 @@ namespace mdbq
                             "$inc" << BSON("nfailed"<<1)<<
                             "$set" << BSON(
                                 "state"         << TS_NEW 
-                                <<"book_time"   << ptime_to_bson(boost::posix_time::max_date_time)
-                                <<"refresh_time"<< ptime_to_bson(boost::posix_time::min_date_time))
-                            ));
+                                <<"book_time"   << mongo::Undefined
+                                <<"refresh_time"<< mongo::Undefined)));
                 CHECK_DB_ERR(m_con);
             }
 
@@ -117,15 +115,15 @@ namespace mdbq
     }
 
     void Hub::insert_job(const mongo::BSONObj& job, unsigned int timeout, const std::string& driver){
-        boost::posix_time::ptime create_time = universal_date_time();
+        boost::posix_time::ptime ctime = universal_date_time();
         m_ptr->m_con.insert(m_prefix+".jobs", 
                 BSON( mongo::GENOID
                     <<"timeout"     << timeout
                     <<"exp_key"     << driver
-                    <<"create_time" << ptime_to_bson(create_time)
-                    <<"finish_time" << ptime_to_bson(boost::posix_time::max_date_time)
-                    <<"book_time"   << ptime_to_bson(boost::posix_time::max_date_time)
-                    <<"refresh_time"<< ptime_to_bson(boost::posix_time::min_date_time)
+                    <<"create_time" << to_mongo_date(ctime)
+                    <<"finish_time" << mongo::Undefined
+                    <<"book_time"   << mongo::Undefined
+                    <<"refresh_time"<< mongo::Undefined
                     <<"misc"        << job
                     <<"nfailed"     << (int)0
                     <<"state"       << TS_NEW

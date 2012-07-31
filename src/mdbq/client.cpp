@@ -65,7 +65,6 @@ namespace mdbq
             throw std::runtime_error("MDBQC: do tasks one by one, please!");
         }
         boost::posix_time::ptime now = universal_date_time();
-        mongo::BSONArray bson_now(ptime_to_bson(now));
 
         std::string hostname(256, '\0');
         gethostname(&hostname[0], 256);
@@ -76,9 +75,10 @@ namespace mdbq
                 "findAndModify" << "jobs" <<
                 "query" << BSON("state" << TS_NEW)<<
                 "update"<<BSON("$set"<<
-                    BSON("book_time"<<bson_now
+                    BSON("book_time"<<to_mongo_date(now)
                         <<"state"<<TS_RUNNING
-                        <<"refresh_time"<<bson_now
+                        <<"result.status"<<"running"
+                        <<"refresh_time"<<to_mongo_date(now)
                         <<"owner"<<hostname_pid)));
         //std::cout << "cmd: "<< cmd<<std::endl;
         //m_ptr->m_con.runCommand(m_jobcol,cmd, res);
@@ -115,14 +115,15 @@ namespace mdbq
                     QUERY("_id"<<ct["_id"]),
                     BSON("$set"<<BSON(
                         "state"<<TS_OK<<
-                        "finish_time"<<ptime_to_bson(finish_time)<<
+                        "finish_time"<<to_mongo_date(finish_time)<<
                         "result"<<result)));
         else
             m_ptr->m_con.update(m_jobcol,
                     QUERY("_id"<<ct["_id"]),
                     BSON("$set"<<BSON(
                         "state"<<TS_FAILED<<
-                        "failure_time"<<ptime_to_bson(finish_time)<<
+                        "failure_time"<<to_mongo_date(finish_time)<<
+                        "result.status"<<"fail"<<
                         "error"<<result)));
         CHECK_DB_ERR(m_ptr->m_con);
         m_ptr->m_current_task = mongo::BSONObj(); // empty, call get_next_task.
@@ -149,7 +150,7 @@ namespace mdbq
                     "taskid"<<ct["_id"]<<
                     "level"<<level<<
                     "nr" << m_ptr->m_running_nr++ <<
-                    "timestamp"<< ptime_to_bson(now)<<
+                    "timestamp"<< to_mongo_date(now)<<
                     "msg"<<msg));
     }
     void Client::log(int level, const char* ptr, size_t len, const mongo::BSONObj& msg){
@@ -179,7 +180,7 @@ namespace mdbq
                     "taskid"<<ct["_id"]<<
                     "level"<<level<<
                     "nr" << m_ptr->m_running_nr++ <<
-                    "timestamp"<<ptime_to_bson(universal_date_time())<<
+                    "timestamp"<<to_mongo_date(universal_date_time())<<
                     "filename" << ret["filename"].String()<<
                     "msg"<<msg
                     ));
@@ -220,7 +221,7 @@ namespace mdbq
         boost::posix_time::ptime now = universal_date_time();
         m_ptr->m_con.update(m_jobcol,
                 QUERY("_id"<<ct["_id"]),
-                BSON( "$set"<<BSON("refresh_time"<<ptime_to_bson(now))));
+                BSON( "$set"<<BSON("refresh_time"<<to_mongo_date(now))));
         CHECK_DB_ERR(m_ptr->m_con);
 
         if(m_ptr->m_log.size()) {

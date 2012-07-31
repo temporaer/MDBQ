@@ -16,6 +16,7 @@ namespace mdbq
         boost::gregorian::date date(boost::gregorian::day_clock::universal_day());
         return boost::posix_time::ptime(date,dur);
     }
+#if 0
     inline
     mongo::BSONArray
     ptime_to_bson(const boost::posix_time::ptime& pt){
@@ -46,6 +47,7 @@ namespace mdbq
                     arr[6].Int()/1000.f+arr[7].Long()/1000000.f));
         return p;
     }
+#endif
 
     inline
     std::string
@@ -58,6 +60,31 @@ namespace mdbq
           <<":"             <<t.time_of_day().seconds();
         return ss.str();
     }
+
+    inline
+    mongo::Date_t to_mongo_date(const boost::posix_time::ptime& pt)
+    {
+        using boost::gregorian::date;
+        using boost::posix_time::ptime;
+        using boost::posix_time::microsec_clock;
+        static ptime const epoch(date(1970, 1, 1));
+
+        boost::posix_time::time_duration::tick_type tt = (pt-epoch).total_milliseconds();
+
+        mongo::Date_t d(tt);
+        return d;
+    } 
+
+    inline
+    boost::posix_time::ptime to_ptime(const mongo::Date_t& md)
+    {
+        using boost::gregorian::date;
+        using boost::posix_time::ptime;
+        using boost::posix_time::microsec_clock;
+
+        static ptime const epoch(date(1970, 1, 1));
+        return epoch + boost::posix_time::milliseconds(md);
+    } 
 }
 
 #endif /* __MDBQ_DATE_TIME_HPP__ */
