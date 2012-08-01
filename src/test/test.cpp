@@ -124,7 +124,7 @@ struct work_a_bit_client
     unsigned int i;
     void handle_task(const mongo::BSONObj& o){
         try{
-            boost::this_thread::sleep(boost::posix_time::seconds(0.01));
+            boost::this_thread::sleep(boost::posix_time::milliseconds(10));
             log(0, BSON("logging"<<i++));
             checkpoint();
             const char* s = "iafgiauhf iwu hfiuwh fpiuqwh feipuhweoifuh iwufeh iwufh 3q4uhf ";
