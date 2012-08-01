@@ -108,12 +108,15 @@ namespace mdbq
         if(!res["value"].isABSONObj())
                 return false;
 
+        m_ptr->m_current_task = res["value"].Obj().copy();
+
         int timeout_s = INT_MAX;
         if(m_ptr->m_current_task.hasField("timeout"))
             timeout_s = m_ptr->m_current_task["timeout"].Int();
-        m_ptr->m_current_task = res["value"].Obj().copy();
-        m_ptr->m_running_nr = 0;
+
         m_ptr->m_current_task_timeout_time = now + boost::posix_time::seconds(timeout_s);
+        m_ptr->m_running_nr = 0;
+
         o = m_ptr->m_current_task["misc"].Obj();
 
         // start logging
