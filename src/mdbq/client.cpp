@@ -29,7 +29,6 @@ namespace mdbq
         mongo::BSONObj            m_current_task;
         mongo::BSONObj            m_task_selector;
         std::auto_ptr<mongo::GridFS>             m_fs;
-        boost::posix_time::ptime  m_current_task_book_time;
         boost::posix_time::ptime  m_current_task_timeout_time;
         long long int             m_running_nr;
         //std::auto_ptr<mongo::BSONArrayBuilder>   m_log;
@@ -111,7 +110,6 @@ namespace mdbq
         if(m_ptr->m_current_task.hasField("timeout"))
             timeout_s = m_ptr->m_current_task["timeout"].Int();
         m_ptr->m_current_task = res["value"].Obj().copy();
-        m_ptr->m_current_task_book_time = now;
         m_ptr->m_running_nr = 0;
         m_ptr->m_current_task_timeout_time = now + boost::posix_time::seconds(timeout_s);
         o = m_ptr->m_current_task["misc"].Obj();
@@ -230,7 +228,6 @@ namespace mdbq
 
                 // clean up current state
                 m_ptr->m_current_task = mongo::BSONObj();
-                m_ptr->m_current_task_book_time = boost::posix_time::pos_infin;
                 m_ptr->m_current_task_timeout_time = boost::posix_time::pos_infin;
 
                 throw timeout_exception();
