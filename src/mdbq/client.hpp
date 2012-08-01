@@ -44,7 +44,7 @@ namespace mdbq
              *
              * @param interval querying interval
              */
-            void reg(boost::asio::io_service& io_service, unsigned int interval);
+            void reg(boost::asio::io_service& io_service, float interval);
 
             /**
              * log a bson obj directly with the job

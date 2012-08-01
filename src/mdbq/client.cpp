@@ -33,17 +33,19 @@ namespace mdbq
         long long int             m_running_nr;
         //std::auto_ptr<mongo::BSONArrayBuilder>   m_log;
         std::vector<mongo::BSONObj> m_log;
-        unsigned int              m_interval;
+        float              m_interval;
         std::auto_ptr<boost::asio::deadline_timer> m_timer;
         void update_check(Client* c, const boost::system::error_code& error){
             mongo::BSONObj task;
             if(c->get_next_task(task))
                 c->handle_task(task);
             if(!error){
-                if(m_interval == 1)
-                    m_timer->expires_at(m_timer->expires_at() + boost::posix_time::millisec(rand()%(m_interval*1000-500)));
+                unsigned int ms;
+                if(m_interval <= 1.f)
+                    ms = 1000*(m_interval/2 + drand48() * (m_interval/2));
                 else
-                    m_timer->expires_at(m_timer->expires_at() + boost::posix_time::seconds(1) + boost::posix_time::millisec(rand()%(m_interval*1000-1000)));
+                    ms = 1000*(1 + drand48() * (m_interval-1));
+                m_timer->expires_at(m_timer->expires_at() + boost::posix_time::millisec(ms));
                 m_timer->async_wait(boost::bind(&ClientImpl::update_check,this,c,boost::asio::placeholders::error));
             }
         }
@@ -145,9 +147,11 @@ namespace mdbq
         CHECK_DB_ERR(m_ptr->m_con);
         m_ptr->m_current_task = mongo::BSONObj(); // empty, call get_next_task.
     }
-    void Client::reg(boost::asio::io_service& io_service, unsigned int interval){
+    void Client::reg(boost::asio::io_service& io_service, float interval){
         m_ptr->m_interval = interval;
-        m_ptr->m_timer.reset(new boost::asio::deadline_timer(io_service, boost::posix_time::seconds(interval)));
+        m_ptr->m_timer.reset(new boost::asio::deadline_timer(io_service, 
+                    boost::posix_time::seconds(interval) + 
+                    boost::posix_time::millisec((int)(1000*(interval-(int)interval)))));
         m_ptr->m_timer->async_wait(boost::bind(&ClientImpl::update_check, m_ptr.get(), this, boost::asio::placeholders::error));
     }
     
