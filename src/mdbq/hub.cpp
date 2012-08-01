@@ -82,8 +82,7 @@ namespace mdbq
 
                 std::cerr << "HUB: warning: task `"
                     << f["_id"] << "' on `"
-                    << f["owner"].Array()[0].String() << "' ("
-                    << f["owner"].Array()[1].Int() << ") failed, rescheduling"<<std::endl;
+                    << f["owner"].String() << "' failed, rescheduling"<<std::endl;
 
                 m_con.update(m_prefix+".jobs", 
                         QUERY("_id"<<f["_id"]), 
