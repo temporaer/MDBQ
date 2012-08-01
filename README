@@ -14,10 +14,10 @@ Own control flow:
     Client clt("localhost", "test.col");
     mongo::BSONObj task;
     clt.get_next_task(task);
-    clt.log(BSON("level"<<0<<"progress"<<"10%"));
-    clt.log(BSON("level"<<0<<"progress"<<"50%"));
+    clt.log(0, BSON("progress"<<"10%"));
+    clt.log(0, BSON("progress"<<"50%"));
     clt.checkpoint(); // flush log to server, mark that we're still working
-    clt.log(BSON("level"<<0<<"progress"<<"80%"));
+    clt.log(0, BSON("progress"<<"80%"));
     clt.finish(BSON("baz"<<3));
 
 Boost.Asio control flow (preferred):
@@ -26,21 +26,27 @@ Boost.Asio control flow (preferred):
     // on hub:
     /////////////////////////////////////////
     boost::asio::io_service io;
-    // [...]  (register polling of task generators)
-    hub.reg(io, 1); // poll every second
+    Hub hub("localhost", "test.col");
+    // register polling of task generators
+    // they should be called once/periodically
+    // and call insert_job(...)
+    // You can also leave this to a 3rd party.
+    hub.reg(io, 1); // poll database every second
     io.run();
 
     /////////////////////////////////////////
     // on client:
     /////////////////////////////////////////
     struct my_client : pubic mdbq::Client{
-        my_client(string url, string prefix):mdbq::Client(url,prefix);
+        my_client(string url, string prefix, const BSONObj& query)
+        : mdbq::Client(url,prefix,query);
         void handle_task(const BSONObj& o){ 
-            try{ /* do the task, call finish() */ }
+            try{ /* do the task, call finish(...) */ }
             catch(mdbq::timeout_exception){/* do nothing */}
         }
     };
-    my_client clt("localhost", "test.mdbq");
+    // a client that only works on tasks with foo==1
+    my_client clt("localhost", "test_mdbq", BSON("foo"<<1));
     clt.reg(io, 1); // poll every second
     io.run();
 
