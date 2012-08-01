@@ -152,6 +152,9 @@ namespace mdbq
         m_ptr->m_con.dropCollection(m_prefix+".log");
         m_ptr->m_con.dropCollection(m_prefix+".fs.chunks");
         m_ptr->m_con.dropCollection(m_prefix+".fs.files");
+
+        // this is from https://jira.mongodb.org/browse/SERVER-5323
+        m_ptr->m_con.ensureIndex(m_prefix+".fs.chunks", BSON("files_id"<<1 << "n"<<1));
     }
     void Hub::got_new_results(){
         std::cout <<"New results available!"<<std::endl;
