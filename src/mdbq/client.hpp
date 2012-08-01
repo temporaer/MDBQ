@@ -35,6 +35,7 @@ namespace mdbq
             std::string m_db;
         public:
             Client(const std::string& url, const std::string& prefix);
+            Client(const std::string& url, const std::string& prefix, const mongo::BSONObj& q);
             bool get_next_task(mongo::BSONObj& o);
             void finish(const mongo::BSONObj& result, bool ok=1);
 

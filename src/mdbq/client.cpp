@@ -27,6 +27,7 @@ namespace mdbq
     struct ClientImpl{
         mongo::DBClientConnection m_con;
         mongo::BSONObj            m_current_task;
+        mongo::BSONObj            m_task_selector;
         std::auto_ptr<mongo::GridFS>             m_fs;
         boost::posix_time::ptime  m_current_task_book_time;
         boost::posix_time::ptime  m_current_task_timeout_time;
@@ -60,6 +61,19 @@ namespace mdbq
         m_db = prefix;
         m_ptr->m_fs.reset(new mongo::GridFS(m_ptr->m_con, m_db, "fs"));
     }
+    Client::Client(const std::string& url, const std::string& prefix, const mongo::BSONObj& query)
+        : m_jobcol(prefix+".jobs")
+        , m_logcol(prefix+".log")
+        , m_fscol(prefix+".fs")
+    {
+        m_ptr.reset(new ClientImpl());
+        m_ptr->m_con.connect(url);
+        m_ptr->m_task_selector = query;
+        CHECK_DB_ERR(m_ptr->m_con);
+
+        m_db = prefix;
+        m_ptr->m_fs.reset(new mongo::GridFS(m_ptr->m_con, m_db, "fs"));
+    }
     bool Client::get_next_task(mongo::BSONObj& o){
         if(!m_ptr->m_current_task.isEmpty()){
             throw std::runtime_error("MDBQC: do tasks one by one, please!");
@@ -70,10 +84,15 @@ namespace mdbq
         gethostname(&hostname[0], 256);
         std::string hostname_pid = (boost::format("%s:%d") % &hostname[0] % getpid()).str();
 
-        mongo::BSONObj res, cmd;
+        mongo::BSONObjBuilder queryb;
+        mongo::BSONObj res, cmd, query;
+        queryb.append("state", TS_NEW);
+        if(! m_ptr->m_task_selector.isEmpty())
+            queryb.appendElements(m_ptr->m_task_selector);
+        query = queryb.obj();
         cmd = BSON(
                 "findAndModify" << "jobs" <<
-                "query" << BSON("state" << TS_NEW)<<
+                "query" << query <<
                 "update"<<BSON("$set"<<
                     BSON("book_time"<<to_mongo_date(now)
                         <<"state"<<TS_RUNNING
