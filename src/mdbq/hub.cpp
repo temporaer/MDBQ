@@ -127,6 +127,7 @@ namespace mdbq
                     <<"nfailed"     << (int)0
                     <<"state"       << TS_NEW
                     <<"result"      << BSON("status"<<"new")
+                    <<"version"     << (int)0
                     )
                 );
         CHECK_DB_ERR(m_ptr->m_con);

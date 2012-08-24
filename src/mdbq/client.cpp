@@ -132,18 +132,23 @@ namespace mdbq
         this->checkpoint(false); // flush logs, do not check for timeout
 
         boost::posix_time::ptime finish_time = universal_date_time();
+        int version = ct["version"].Int();
         if(ok)
             m_ptr->m_con.update(m_jobcol,
-                    QUERY("_id"<<ct["_id"]),
+                    QUERY("_id"<<ct["_id"]<<
+                        "version"<<version),
                     BSON("$set"<<BSON(
                         "state"<<TS_OK<<
+                        "version"<<version+1<<
                         "finish_time"<<to_mongo_date(finish_time)<<
                         "result"<<result)));
         else
             m_ptr->m_con.update(m_jobcol,
-                    QUERY("_id"<<ct["_id"]),
+                    QUERY("_id"<<ct["_id"]<<
+                        "version"<<version),
                     BSON("$set"<<BSON(
                         "state"<<TS_FAILED<<
+                        "version"<<version+1<<
                         "failure_time"<<to_mongo_date(finish_time)<<
                         "result.status"<<"fail"<<
                         "error"<<result)));
