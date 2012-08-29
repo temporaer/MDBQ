@@ -11,7 +11,7 @@
 #else
 #  define CHECK_DB_ERR(CON)\
             {\
-                string e = (CON).getLastError();\
+                std::string e = (CON).getLastError();\
                 if(!e.empty()){\
                     throw std::runtime_error("hub: error_code!=0, failing: " + e + "\n" + (CON).getLastErrorDetailed().toString() );\
                 }\
