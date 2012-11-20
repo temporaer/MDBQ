@@ -4,8 +4,8 @@
 namespace mdbq
 {
     enum TaskState{
-        TS_OPEN,
-        TS_ASSIGNED,
+        TS_NEW,
+        TS_RUNNING,
         TS_OK,
         TS_FAILED
     };
