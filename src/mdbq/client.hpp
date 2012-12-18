@@ -33,6 +33,7 @@ namespace mdbq
             std::string m_logcol;
             std::string m_fscol;
             std::string m_db;
+            bool m_verbose;
         public:
             /**
              * construct client w/o task preferences.
@@ -108,6 +109,12 @@ namespace mdbq
              * Destroy client.
              */
             virtual ~Client();
+
+            /**
+             * set client verbosity.
+             * @param v verbosity
+             */
+            inline void set_verbose(bool v=true){ m_verbose = v; }
     };
 }
 #endif /* __MDBQ_CLIENT_HPP__ */

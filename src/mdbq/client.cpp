@@ -54,6 +54,7 @@ namespace mdbq
         : m_jobcol(prefix+".jobs")
         , m_logcol(prefix+".log")
         , m_fscol(prefix+".fs")
+        , m_verbose(false)
     {
         m_ptr.reset(new ClientImpl());
         m_ptr->m_con.connect(url);
@@ -66,6 +67,7 @@ namespace mdbq
         : m_jobcol(prefix+".jobs")
         , m_logcol(prefix+".log")
         , m_fscol(prefix+".fs")
+        , m_verbose(false)
     {
         m_ptr.reset(new ClientImpl());
         m_ptr->m_con.connect(url);
@@ -106,7 +108,11 @@ namespace mdbq
         CHECK_DB_ERR(m_ptr->m_con);
         //std::cout << "res: "<<res<<std::endl;
         if(!res["value"].isABSONObj())
-                return false;
+        {
+            if(m_verbose)
+                std::cout << "No task available, cmd:" << cmd << std::endl;
+            return false;
+        }
 
         m_ptr->m_current_task = res["value"].Obj().copy();
 
