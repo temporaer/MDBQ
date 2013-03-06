@@ -57,7 +57,7 @@ FIND_PACKAGE( Boost 1.46 COMPONENTS unit_test_framework date_time program_option
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})
 
-ENABLE_TESTING()
+#ENABLE_TESTING()
 add_subdirectory(src)
 
 
