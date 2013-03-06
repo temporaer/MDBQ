@@ -71,25 +71,3 @@ export(TARGETS mdbq
 # Export the package for use from the build-tree
 # (this registers the build-tree with a global CMake-registry)
 export(PACKAGE MDBQ)
- 
-# Create a MDBQBuildTreeSettings.cmake file for the use from the build tree
-configure_file(MDBQBuildTreeSettings.cmake.in
-  "${PROJECT_BINARY_DIR}/MDBQBuildTreeSettings.cmake" @ONLY)
- 
-# Create the MDBQConfig.cmake and MDBQConfigVersion files
-file(RELATIVE_PATH CONF_REL_INCLUDE_DIR "${INSTALL_CMAKE_DIR}"
-   "${INSTALL_INCLUDE_DIR}")
-configure_file(MDBQConfig.cmake.in
-  "${PROJECT_BINARY_DIR}/MDBQConfig.cmake" @ONLY)
-configure_file(MDBQConfigVersion.cmake.in
-  "${PROJECT_BINARY_DIR}/MDBQConfigVersion.cmake" @ONLY)
- 
-# Install the MDBQConfig.cmake and MDBQConfigVersion.cmake
-install(FILES
-  "${PROJECT_BINARY_DIR}/MDBQConfig.cmake"
-  "${PROJECT_BINARY_DIR}/MDBQConfigVersion.cmake"
-  DESTINATION "${INSTALL_CMAKE_DIR}" COMPONENT dev)
-
-# Install the export set for use with the install-tree
-install(EXPORT MDBQLibraryDepends DESTINATION
-  "${INSTALL_CMAKE_DIR}" COMPONENT dev)
