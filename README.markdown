@@ -1,5 +1,11 @@
 # MongoDB Queue
 
+mdbq is a job queue for C++ based on MongoDB as the center of communication.
+It can be used standalone (the user inserts jobs and processes them). However,
+and much more interestingly, MDBQ clients are compatible with the python
+hyperopt package available on pypi, which allows to search large parameter
+spaces efficiently for optimal parameters.
+
 ## Lightweight C++ Job Queue and Logging library using MongoDB for queues and logs
 
 Control flow is either by you or using boost.asio.
