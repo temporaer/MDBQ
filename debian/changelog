@@ -1,3 +1,9 @@
+libmdbq (1.0~ppa1~precise1) precise; urgency=low
+
+  * ubuntu guidelines compatible version number
+
+ -- Hannes Schulz <schulz@ais.uni-bonn.de>  Thu, 07 Mar 2013 11:55:49 +0100
+
 libmdbq (1.0) precise; urgency=low
 
   * Initial Release.
