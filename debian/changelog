@@ -1,3 +1,9 @@
+libmdbq (1.0~ppa1~quantal1) quantal; urgency=low
+
+  * quantal version
+
+ -- Hannes Schulz <schulz@ais.uni-bonn.de>  Thu, 07 Mar 2013 11:56:49 +0100
+
 libmdbq (1.0~ppa1~precise1) precise; urgency=low
 
   * ubuntu guidelines compatible version number
