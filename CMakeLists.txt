@@ -1,37 +1,6 @@
 cmake_minimum_required( VERSION 2.6 FATAL_ERROR )
 PROJECT(mdbq CXX)
 
-#SET(CPACK_SOURCE_GENERATOR "TGZ")
-SET(CPACK_GENERATOR "DEB")
-SET(CPACK_PACKAGE_NAME "libmdbq")
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "MongoDB Message Queue in C++")
-SET(CPACK_PACKAGE_CONTACT "Hannes Schulz <schulz at ais dot uni-bonn dot de>")
-SET(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.markdown")
-SET(CPACK_PACKAGE_VERSION_MAJOR "0")
-SET(CPACK_PACKAGE_VERSION_MINOR "1")
-SET(CPACK_PACKAGE_VERSION_PATCH ${DATESTR})
-SET(CPACK_SOURCE_IGNORE_FILES "${CPACK_SOURCE_IGNORE_FILES};${CMAKE_SOURCE_DIR}/.git")
-SET(CPACK_PACKAGE_INSTALL_DIRECTORY "mdbq")
-
-
-# Offer the user the choice of overriding the installation directories
-set(INSTALL_LIB_DIR lib CACHE PATH "Installation directory for libraries")
-set(INSTALL_BIN_DIR bin CACHE PATH "Installation directory for executables")
-set(INSTALL_INCLUDE_DIR include CACHE PATH "Installation directory for header files")
-if(WIN32 AND NOT CYGWIN)
-  set(DEF_INSTALL_CMAKE_DIR CMake)
-else()
-    set(DEF_INSTALL_CMAKE_DIR lib/CMake/MDBQ)
-endif()
-set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH "Installation directory for CMake files")
-# Make relative paths absolute (needed later on)
-foreach(p LIB BIN INCLUDE CMAKE)
-  set(var INSTALL_${p}_DIR)
-  if(NOT IS_ABSOLUTE "${${var}}")
-    set(${var} "${CMAKE_INSTALL_PREFIX}/${${var}}")
-  endif()
-endforeach()
-
 SET(CPACK_DEBIAN_PACKAGE_DEPENDS    "libboost-dev (> 1.42.0)" )
 INCLUDE(CPack)
 
@@ -59,15 +28,3 @@ LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})
 
 #ENABLE_TESTING()
 add_subdirectory(src)
-
-
-# The interesting stuff goes here
-# ===============================
- 
-# Add all targets to the build-tree export set
-export(TARGETS mdbq
-  FILE "${PROJECT_BINARY_DIR}/MDBQLibraryDepends.cmake")
- 
-# Export the package for use from the build-tree
-# (this registers the build-tree with a global CMake-registry)
-export(PACKAGE MDBQ)
