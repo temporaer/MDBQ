@@ -129,6 +129,25 @@ namespace mdbq
         m_ptr->m_log.clear();
         return true;
     }
+    bool Client::get_best_task(mongo::BSONObj& task){
+        mongo::BSONObjBuilder queryb;
+        // select finished task
+        queryb.append("state", TS_OK);
+        if(! m_ptr->m_task_selector.isEmpty())
+            queryb.appendElements(m_ptr->m_task_selector);
+
+        // order by loss (ascending) and take first result
+        std::auto_ptr<mongo::DBClientCursor> cursor = m_ptr->m_con.query(m_db + ".jobs",
+                mongo::Query(queryb.obj()).sort("result.loss", 1), 1);
+
+        if (!cursor->more()) {
+            // no task found
+            return false;
+        }
+
+        task = cursor->next();
+        return true;
+    }
     void Client::finish(const mongo::BSONObj& result, bool ok){
         const mongo::BSONObj& ct = m_ptr->m_current_task;
         if(ct.isEmpty()){

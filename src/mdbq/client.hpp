@@ -57,6 +57,15 @@ namespace mdbq
             bool get_next_task(mongo::BSONObj& o);
 
             /**
+             * find and return the task, including result details, which has minimal loss
+             *
+             * @param task set to finished task with minimal loss, if finished tasks exist
+             *
+             * returns true if a finished task exists and is store to task
+             */
+            bool get_best_task(mongo::BSONObj& task);
+
+            /**
              * finish the task.
              * @param result a description of the result
              * @param ok if false, task may be rescheduled by hub
