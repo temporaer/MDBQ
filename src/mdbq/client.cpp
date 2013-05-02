@@ -145,7 +145,7 @@ namespace mdbq
             return false;
         }
 
-        task = cursor->next();
+        task = cursor->next().copy();
         return true;
     }
     void Client::finish(const mongo::BSONObj& result, bool ok){
