@@ -20,7 +20,7 @@ There is an example demonstrating this feature here:
 ```cpp
 // in your server program instance:
 Hub hub("localhost", "test.col");
-hub.insert_job(BSON("foo"<<1<<"bar<<2), 1000); // timeout in 1000 seconds
+hub.insert_job(BSON("foo"<<1<<"bar"<<2), 1000); // timeout in 1000 seconds
 
 // in your workers
 Client clt("localhost", "test.col");
