@@ -1,3 +1,9 @@
+libmdbq (1.02~ppa1~trusty) trusty; urgency=medium
+
+  * bump ubuntu version
+
+ -- Hannes Schulz <schulz@ais.uni-bonn.de>  Wed, 23 Jul 2014 15:05:57 +0200
+
 libmdbq (1.02~ppa1~quantal) quantal; urgency=low
 
   * Benedikt Waldvogel: retrieve currently best setting
